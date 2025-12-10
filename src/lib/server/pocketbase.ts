@@ -9,7 +9,7 @@ import { env } from '$env/dynamic/private'
 
 const PB_DIR = join(process.cwd(), 'pocketbase')
 const PB_BINARY = join(PB_DIR, process.platform === 'win32' ? 'pocketbase.exe' : 'pocketbase')
-const PB_DATA_DIR = join(process.cwd(), env.WORKSPACE_DIR || './workspace', 'pb_data')
+const PB_DATA_DIR = join(PB_DIR, 'pb_data')
 const PB_PORT = 8091
 
 let pbProcess: ChildProcess | null = null
