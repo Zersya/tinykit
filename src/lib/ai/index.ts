@@ -1,8 +1,8 @@
 import type { LLMProvider, LLMConfig } from './types';
 import { OpenAIProvider } from './providers/openai';
 import { AnthropicProvider } from './providers/anthropic';
-import { ZAIProvider } from './providers/zai';
 import { GeminiProvider } from './providers/gemini';
+import { DeepSeekProvider } from './providers/deepseek';
 
 export function createLLMProvider(config: LLMConfig): LLMProvider {
 	const webSearch = config.webSearch ?? false;
@@ -26,14 +26,11 @@ export function createLLMProvider(config: LLMConfig): LLMProvider {
 			}
 			return new GeminiProvider(config.apiKey, config.model, webSearch);
 
-		case 'ollama':
-			throw new Error('Ollama provider not yet implemented');
-
-		case 'zai':
+		case 'deepseek':
 			if (!config.apiKey) {
-				throw new Error('z.ai API key is required');
+				throw new Error('DeepSeek API key is required');
 			}
-			return new ZAIProvider(config.apiKey, config.model, config.baseUrl, webSearch);
+			return new DeepSeekProvider(config.apiKey, config.model);
 
 		default:
 			throw new Error(`Unknown provider: ${config.provider}`);
@@ -43,5 +40,5 @@ export function createLLMProvider(config: LLMConfig): LLMProvider {
 export * from './types';
 export { OpenAIProvider } from './providers/openai';
 export { AnthropicProvider } from './providers/anthropic';
-export { ZAIProvider } from './providers/zai';
 export { GeminiProvider } from './providers/gemini';
+export { DeepSeekProvider } from './providers/deepseek';

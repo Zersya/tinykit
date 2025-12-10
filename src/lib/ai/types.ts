@@ -28,7 +28,7 @@ export interface LLMProvider {
 }
 
 export interface LLMConfig {
-	provider: 'openai' | 'anthropic' | 'ollama' | 'zai' | 'gemini';
+	provider: 'openai' | 'anthropic' | 'gemini' | 'deepseek';
 	apiKey?: string;
 	model: string;
 	baseUrl?: string;
@@ -39,8 +39,8 @@ export interface LLMConfig {
 export const WEB_SEARCH_PRICING: Record<string, number> = {
 	openai: 0.03,
 	anthropic: 0.01,
-	zai: 0.01,
-	gemini: 0.035
+	gemini: 0.035,
+	deepseek: 0.01
 };
 
 // Token pricing per 1M tokens (in USD)
@@ -71,15 +71,6 @@ export const TOKEN_PRICING: Record<string, { input: number; output: number }> = 
 	'o1-pro': { input: 150.00, output: 600.00 },
 	'o3': { input: 2.00, output: 8.00 },
 	'o3-mini': { input: 1.10, output: 4.40 },
-	// ZAI/Zhipu models - https://docs.z.ai/guides/overview/pricing
-	'glm-4.6': { input: 0.60, output: 2.20 },
-	'glm-4.5': { input: 0.60, output: 2.20 },
-	'glm-4.5v': { input: 0.60, output: 1.80 },
-	'glm-4.5-x': { input: 2.20, output: 8.90 },
-	'glm-4.5-air': { input: 0.20, output: 1.10 },
-	'glm-4.5-airx': { input: 1.10, output: 4.50 },
-	'glm-4-32b-0414-128k': { input: 0.10, output: 0.10 },
-	'glm-4.5-flash': { input: 0.00, output: 0.00 },
 	// Gemini models - https://ai.google.dev/pricing
 	'gemini-3-pro-preview': { input: 1.25, output: 10.00 },
 	'gemini-2.5-pro': { input: 1.25, output: 10.00 },
@@ -89,7 +80,10 @@ export const TOKEN_PRICING: Record<string, { input: number; output: number }> = 
 	'gemini-2.0-flash-lite': { input: 0.075, output: 0.30 },
 	'gemini-1.5-pro': { input: 1.25, output: 5.00 },
 	'gemini-1.5-flash': { input: 0.075, output: 0.30 },
-	'gemini-1.5-flash-8b': { input: 0.0375, output: 0.15 }
+	'gemini-1.5-flash-8b': { input: 0.0375, output: 0.15 },
+	// DeepSeek models - https://platform.deepseek.com/api-docs/pricing
+	'deepseek-chat': { input: 0.27, output: 1.10 },
+	'deepseek-reasoner': { input: 0.55, output: 2.19 }
 };
 
 export function calculateCost(model: string, usage: LLMUsage, provider?: string): number {
