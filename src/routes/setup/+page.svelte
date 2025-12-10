@@ -7,13 +7,15 @@
 	const PROVIDERS = [
 		{ id: "gemini", name: "Google Gemini", models: ["gemini-3-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"] },
 		{ id: "anthropic", name: "Anthropic", models: ["claude-opus-4-5-20251101", "claude-sonnet-4-5-20250929", "claude-3-5-sonnet-20241022"] },
-		{ id: "openai", name: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1", "o3-mini"] }
+		{ id: "openai", name: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1", "o3-mini"] },
+		{ id: "deepseek", name: "DeepSeek", models: ["deepseek-chat", "deepseek-reasoner"] }
 	]
 
 	const API_KEY_URLS: Record<string, string> = {
 		gemini: "https://aistudio.google.com/apikey",
 		anthropic: "https://console.anthropic.com/settings/keys",
-		openai: "https://platform.openai.com/api-keys"
+		openai: "https://platform.openai.com/api-keys",
+		deepseek: "https://platform.deepseek.com/api_keys"
 	}
 
 	let email = $state("");

@@ -344,7 +344,7 @@ export async function deleteSnapshot(projectId: string, snapshotId: string) {
  * LLM configuration type
  */
 export interface LLMSettings {
-	provider: 'openai' | 'anthropic' | 'gemini' | 'zai' | 'ollama'
+	provider: 'openai' | 'anthropic' | 'gemini' | 'deepseek'
 	api_key: string
 	model: string
 	base_url?: string

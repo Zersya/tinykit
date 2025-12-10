@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types'
 import { env } from '$env/dynamic/private'
 import { validateUserToken, unauthorizedResponse } from '$lib/server/pb'
 
-const LLM_PROVIDER = (env.LLM_PROVIDER as 'openai' | 'anthropic' | 'zai') || 'openai'
+const LLM_PROVIDER = (env.LLM_PROVIDER as 'openai' | 'anthropic' | 'gemini' | 'deepseek') || 'openai'
 const LLM_API_KEY = env.LLM_API_KEY || ''
 const LLM_MODEL = env.LLM_MODEL || 'gpt-4o-mini'
 const LLM_BASE_URL = env.LLM_BASE_URL
@@ -67,15 +67,32 @@ Examples:
 
 			const data = await response.json()
 			name = data.content?.[0]?.text?.trim() || generate_fallback_name(prompt)
-		} else if (LLM_PROVIDER === 'zai') {
-			const response = await fetch(LLM_BASE_URL || 'https://api.zeno.ai/v1/chat/completions', {
+		} else if (LLM_PROVIDER === 'gemini') {
+			const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${LLM_MODEL || 'gemini-2.0-flash'}:generateContent?key=${LLM_API_KEY}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					contents: [{ parts: [{ text: `${system_prompt}\n\nUser: ${prompt}` }] }],
+					generationConfig: { maxOutputTokens: 50 }
+				})
+			})
+
+			if (!response.ok) {
+				console.error('Gemini API error:', await response.text())
+				return json({ name: generate_fallback_name(prompt) })
+			}
+
+			const data = await response.json()
+			name = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || generate_fallback_name(prompt)
+		} else if (LLM_PROVIDER === 'deepseek') {
+			const response = await fetch('https://api.deepseek.com/chat/completions', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					'Authorization': `Bearer ${LLM_API_KEY}`
 				},
 				body: JSON.stringify({
-					model: LLM_MODEL,
+					model: LLM_MODEL || 'deepseek-chat',
 					messages: [
 						{ role: 'system', content: system_prompt },
 						{ role: 'user', content: prompt }
@@ -85,7 +102,7 @@ Examples:
 			})
 
 			if (!response.ok) {
-				console.error('ZAI API error:', await response.text())
+				console.error('DeepSeek API error:', await response.text())
 				return json({ name: generate_fallback_name(prompt) })
 			}
 

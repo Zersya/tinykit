@@ -5,7 +5,7 @@ import type { LLMProvider } from '$lib/ai/types';
 import { env } from '$env/dynamic/private';
 import { validateUserToken, unauthorizedResponse } from '$lib/server/pb';
 
-const LLM_PROVIDER = (env.LLM_PROVIDER as 'openai' | 'anthropic' | 'ollama' | 'zai') || 'openai';
+const LLM_PROVIDER = (env.LLM_PROVIDER as 'openai' | 'anthropic' | 'gemini' | 'deepseek') || 'openai';
 const LLM_API_KEY = env.LLM_API_KEY || '';
 const LLM_MODEL = env.LLM_MODEL || 'gpt-4';
 const LLM_BASE_URL = env.LLM_BASE_URL;

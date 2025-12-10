@@ -51,6 +51,10 @@
     // Mistral models
     "mistral": "simple-icons:mistral",
     "mixtral": "simple-icons:mistral",
+    // DeepSeek models
+    "deepseek": "ri:deepseek-fill",
+    "deepseek-chat": "ri:deepseek-fill",
+    "deepseek-reasoner": "ri:deepseek-fill",
   }
 
   function get_model_icon(model: string | undefined): string {
@@ -78,6 +82,7 @@
     if (model_lower.includes("llama")) return "Llama"
     if (model_lower.includes("mistral")) return "Mistral"
     if (model_lower.includes("mixtral")) return "Mixtral"
+    if (model_lower.includes("deepseek")) return "DeepSeek"
     return model.split("-")[0] || "Unknown"
   }
 
