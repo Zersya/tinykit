@@ -6,11 +6,11 @@
 
 	const PROVIDERS = [
 		{ id: "gemini", name: "Google Gemini", models: [
-			{ id: "gemini-2.5-pro", label: "gemini-2.5-pro — best" },
+			{ id: "gemini-3-pro-preview", label: "gemini-3-pro-preview — best" },
 			{ id: "gemini-2.5-flash", label: "gemini-2.5-flash — fast" }
 		]},
 		{ id: "anthropic", name: "Anthropic", models: [
-			{ id: "claude-sonnet-4-5-20250929", label: "claude-sonnet-4.5 — best" },
+			{ id: "claude-opus-4-5-20251101", label: "claude-opus-4.5 — best" },
 			{ id: "claude-haiku-4-5-20251001", label: "claude-haiku-4.5 — fast" }
 		]},
 		{ id: "openai", name: "OpenAI", models: [
@@ -35,7 +35,7 @@
 	let confirm_password = $state("");
 	let llm_provider = $state("gemini");
 	let llm_api_key = $state("");
-	let llm_model = $state("gemini-2.5-pro");
+	let llm_model = $state("gemini-3-pro-preview");
 	let show_api_key = $state(false);
 	let is_submitting = $state(false);
 	let is_checking = $state(true);
