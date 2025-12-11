@@ -66,6 +66,12 @@
         domain: domain,
         initial_prompt: prompt,
       });
+
+      // Validate project was created successfully
+      if (!project?.id) {
+        throw new Error("Project creation returned invalid response")
+      }
+
       // Redirect to builder (domain is now set, so /tinykit/studio will work)
       goto(`/tinykit/studio?id=${project.id}`);
     } catch (err: any) {
