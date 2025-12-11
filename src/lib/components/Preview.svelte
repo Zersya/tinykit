@@ -194,6 +194,11 @@
       !agent_working
     ) {
       debounced_compile();
+    } else if (!code && !agent_working) {
+      // Code was cleared (e.g., reset) - clear the preview
+      compiled_app = null;
+      compile_error = null;
+      channel?.postMessage({ event: "CLEAR_APP" });
     }
   });
 

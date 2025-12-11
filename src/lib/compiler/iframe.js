@@ -379,6 +379,18 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id, options = {}) => {
             return
           }
 
+          // Handle clearing the app (e.g., on reset)
+          if (event === 'CLEAR_APP') {
+            if (reset) {
+              try { reset() } catch (_) {}
+              reset = null
+            }
+            mod = null
+            document.body.innerHTML = ''
+            last_rendered_html = ''
+            return
+          }
+
           // Handle font link injection
           if (event === 'UPDATE_FONTS') {
             const fonts = payload.fonts || []
