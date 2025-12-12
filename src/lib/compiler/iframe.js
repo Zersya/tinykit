@@ -111,7 +111,7 @@ function create_collection(name) {
 
     async create(data) {
       // Generate client-side ID if not provided (prevents race conditions with SSE)
-      const record_data = data.id ? data : { ...data, id: crypto.randomUUID().slice(0, 8) }
+      const record_data = data.id ? data : { ...data, id: crypto.randomUUID().slice(0, 5) }
       const res = await fetch(base_url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -441,6 +441,30 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id, options = {}) => {
           }
         }
         channel.postMessage({ event: 'INITIALIZED' });
+
+        // Capture runtime errors (not just mount errors)
+        window.addEventListener('error', (e) => {
+          const error_message = e.error ? e.error.toString() : e.message || 'Unknown runtime error'
+          try {
+            channel.postMessage({
+              event: 'SET_ERROR',
+              payload: { error: error_message }
+            })
+          } catch (_) {}
+          e.preventDefault() // Prevent default browser error display
+        })
+
+        // Capture unhandled promise rejections
+        window.addEventListener('unhandledrejection', (e) => {
+          const error_message = e.reason ? e.reason.toString() : 'Unhandled promise rejection'
+          try {
+            channel.postMessage({
+              event: 'SET_ERROR',
+              payload: { error: error_message }
+            })
+          } catch (_) {}
+          e.preventDefault()
+        })
 
         async function init(source) {
           const blob = new Blob([source], { type: 'text/javascript' })

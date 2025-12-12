@@ -31,6 +31,7 @@
   let iframe_loaded = $state(false);
   let compiled_app = $state<string | null>(null);
   let compile_error = $state<string | null>(null);
+  let error_type = $state<"compile" | "runtime">("compile");
   let is_compiling = $state(false);
   let show_building = $state(false);
   let content_fields = $state<any[]>([]);
@@ -75,6 +76,7 @@
         }
       } else if (event === "SET_ERROR") {
         compile_error = data.payload?.error || "Unknown runtime error";
+        error_type = "runtime";
       } else if (event === "BEGIN") {
         compile_error = null;
       }
@@ -146,6 +148,7 @@
 
       if (result.error) {
         compile_error = result.error;
+        error_type = "compile";
         compiled_app = null;
       } else {
         compiled_app = result.js;
@@ -160,6 +163,7 @@
         return;
       }
       compile_error = err instanceof Error ? err.message : String(err);
+      error_type = "compile";
       compiled_app = null;
     } finally {
       // Only update UI state if this is still the current compilation
@@ -300,7 +304,9 @@
       <div class="error-banner-content">
         <span class="error-icon">⚠</span>
         <div class="error-text">
-          <div class="error-title">Compilation Failed</div>
+          <div class="error-title">
+            {error_type === "compile" ? "Compilation Failed" : "Runtime Error"}
+          </div>
           <div class="error-message">{compile_error}</div>
         </div>
       </div>
