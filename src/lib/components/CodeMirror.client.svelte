@@ -821,36 +821,40 @@
       ],
     });
 
-    editorView = new EditorView({
-      state: initialState,
-      parent: editorElement,
-    });
-
-    // On mobile, blur the editor immediately after creation to prevent auto-focus
-    if (is_mobile && disable_mobile_focus) {
-      requestAnimationFrame(() => {
-        editorView?.contentDOM?.blur();
+    // Wait for next frame to ensure parent container has dimensions
+    await tick();
+    requestAnimationFrame(() => {
+      editorView = new EditorView({
+        state: initialState,
+        parent: editorElement,
       });
-    }
 
-    // Mark editor as ready to trigger value sync
-    editor_ready = true;
-
-    // Restore scroll position and folds from cache
-    if (cache_key && wrapperElement) {
-      const cached = scroll_cache.get(cache_key);
-      if (cached !== undefined) {
+      // On mobile, blur the editor immediately after creation to prevent auto-focus
+      if (is_mobile && disable_mobile_focus) {
         requestAnimationFrame(() => {
-          wrapperElement.scrollTop = cached;
+          editorView?.contentDOM?.blur();
         });
       }
-      wrapperElement.addEventListener("scroll", capture_scroll);
 
-      // Restore folds
-      requestAnimationFrame(() => {
-        restore_folds(foldEffect);
-      });
-    }
+      // Mark editor as ready to trigger value sync
+      editor_ready = true;
+
+      // Restore scroll position and folds from cache
+      if (cache_key && wrapperElement) {
+        const cached = scroll_cache.get(cache_key);
+        if (cached !== undefined) {
+          requestAnimationFrame(() => {
+            wrapperElement.scrollTop = cached;
+          });
+        }
+        wrapperElement.addEventListener("scroll", capture_scroll);
+
+        // Restore folds
+        requestAnimationFrame(() => {
+          restore_folds(foldEffect);
+        });
+      }
+    });
   });
 
   onDestroy(() => {
