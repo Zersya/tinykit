@@ -79,7 +79,21 @@ Bindings: \`bind:value\` works in Svelte 5.
 ## Icons
 \`\`\`svelte
 import Icon from '@iconify/svelte'
+
+// Basic usage (no styling)
 <Icon icon="lucide:search" width={18} />
+
+// When styling is needed, wrap in element (Svelte styles can't reach into components)
+<span class="icon-search">
+  <Icon icon="lucide:search" width={18} />
+</span>
+
+<style>
+.icon-search {
+  color: var(--icon-color);
+  display: inline-flex;
+}
+</style>
 \`\`\`
 Common icons: plus, x, edit, trash-2, search, settings, user, home, heart, star, bookmark, check, menu, chevron-down, arrow-left, loader-2, grid, list, eye, filter. Format: \`lucide:icon-name\`
 
