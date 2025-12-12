@@ -29,15 +29,33 @@ export interface StreamCallbacks {
 
 const SYSTEM_PROMPT = `You are a code assistant for tinykit, building small web apps.
 
-BEGIN EVERY RESPONSE WITH TEXT - NEVER WITH A TOOL CALL.
+Response format:
+1. For SUBSTANTIAL tasks (building new features, major changes):
+   - Start with a numbered plan (3-5 items):
+     "I'll build a pins app:
+     1. Pinterest-style grid layout with masonry
+     2. Pin cards with image, title, description
+     3. Modal for viewing/editing individual pins
+     4. Local database for storing pins
+     5. Search and filter functionality"
+   - Then call tools silently
 
-Format:
-1. First sentence: Explain what you'll build (e.g., "I'll create a todo list with filtering and deletion.")
-2. Then use tools
-3. Done! No need to explain usage after - the tool badges show what was created.
+2. For SIMPLE tasks (small tweaks, single changes):
+   - Brief explanation ("I'll change the button color to red")
+   - Then call tools
 
-Wrong: Immediately calling write_code ❌
-Right: "I'll build X with Y features" → use tools ✅
+3. For QUESTIONS (no tools needed):
+   - Just answer directly
+
+Tool calling rules:
+- NEVER show tool arguments as JSON in code blocks
+- DO NOT explain what tools you're calling
+- Just call them silently
+- Tools appear as badges automatically
+
+WRONG: Immediately calling write_code without ANY explanation ❌
+WRONG: Showing \`\`\`json {...}\`\`\` ❌
+RIGHT: Brief text → then tools ✅
 
 ## Architecture
 - Single Svelte 5 file (App.svelte) with standard CSS in <style>
@@ -101,8 +119,8 @@ const rss = await proxy.text('https://hnrss.org/frontpage')
 - Touch-friendly: buttons/links min 44px tap target
 
 ## Workflow
-1. ALWAYS start with a brief plan (2-4 lines of text explanation)
-2. Use write_code tool to save App.svelte
+1. Start with numbered plan (3-5 items as shown above)
+2. Call write_code tool to save App.svelte
 3. IMMEDIATELY after write_code, create design fields for colors/fonts/radii and content fields for text
 
 ## Design Fields
@@ -163,9 +181,22 @@ function create_tools(project_id: string) {
 				code: z.string().describe('The complete Svelte 5 component code to write to App.svelte')
 			}),
 			execute: async ({ code }: { code: string }) => {
+				// Post-process: fix common syntax errors
+				let cleaned_code = code
+					// Fix {/#each} → {/each}
+					.replace(/\{\/\#each\}/g, '{/each}')
+					// Fix {/#if} → {/if}
+					.replace(/\{\/\#if\}/g, '{/if}')
+					// Fix {/#await} → {/await}
+					.replace(/\{\/\#await\}/g, '{/await}')
+					// Fix {/#key} → {/key}
+					.replace(/\{\/\#key\}/g, '{/key}')
+
 				// Note: onToolCall is triggered by stream events, not here (avoids duplicates)
-				await updateProject(project_id, { frontend_code: code })
-				return `Wrote code to App.svelte (${code.length} chars)`
+				await updateProject(project_id, { frontend_code: cleaned_code })
+
+				const fixes = code !== cleaned_code ? ' (auto-fixed syntax errors)' : ''
+				return `Wrote code to App.svelte (${cleaned_code.length} chars)${fixes}`
 			}
 		}),
 
@@ -188,7 +219,7 @@ function create_tools(project_id: string) {
 				}
 
 				fields.push({
-					id: Date.now().toString(),
+					id: crypto.randomUUID().slice(0, 5),
 					name,
 					type,
 					value: type === 'boolean' ? value === 'true' : value,
@@ -224,7 +255,7 @@ CSS variable is auto-generated from name: "Card Background" → --card-backgroun
 				}
 
 				const new_field: any = {
-					id: Date.now().toString(),
+					id: crypto.randomUUID().slice(0, 5),
 					name,
 					css_var,
 					value,
@@ -270,7 +301,7 @@ CSS variable is auto-generated from name: "Card Background" → --card-backgroun
 				// Add IDs to records
 				const now = new Date().toISOString()
 				const records_with_ids = records.map(r => ({
-					id: r.id || Math.random().toString(36).slice(2, 7),
+					id: r.id || crypto.randomUUID().slice(0, 5),
 					...r,
 					created: r.created || now,
 					updated: r.updated || now
@@ -316,7 +347,7 @@ CSS variable is auto-generated from name: "Card Background" → --card-backgroun
 
 				const now = new Date().toISOString()
 				const new_records_with_ids = new_records.map(r => ({
-					id: r.id || Math.random().toString(36).slice(2, 7),
+					id: r.id || crypto.randomUUID().slice(0, 5),
 					...r,
 					created: r.created || now,
 					updated: r.updated || now
