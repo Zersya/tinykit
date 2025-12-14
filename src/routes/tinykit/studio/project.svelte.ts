@@ -53,7 +53,6 @@ export class ProjectStore {
         pb.collection('_tk_projects')
             .subscribe(this.project_id, (e) => {
                 if (e.action === 'update') {
-                    console.log({ e })
                     // Update the full project record
                     this.project = e.record as unknown as Project;
                     // Dispatch event for components that still rely on it (like Preview)

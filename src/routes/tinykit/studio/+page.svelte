@@ -127,7 +127,7 @@
 	// Core state
 	let current_tab = $state<TabId>(get_tab_from_url());
 	// Derive title/domain from store project
-	let project_title = $derived(store.project?.name || "My Project");
+	let project_title = $derived(store.project?.name);
 	let project_domain = $derived(store.project?.domain || "");
 
 	let is_deploying = $state(false);

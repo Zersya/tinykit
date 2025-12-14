@@ -7,7 +7,7 @@ migrate((app) => {
 		name: "_tk_projects",
 		type: "base",
 		fields: [
-			{ name: "name", type: "text", required: true },
+			{ name: "name", type: "text", required: false },
 			{ name: "domain", type: "text", required: true },
 			{ name: "frontend_code", type: "text", required: false, max: 10000000 },
 			{ name: "backend_code", type: "text", required: false, max: 10000000 },

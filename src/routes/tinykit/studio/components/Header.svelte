@@ -187,9 +187,6 @@
 
   function finish_editing_title() {
     is_editing_title = false;
-    if (!title_input_value.trim()) {
-      title_input_value = "My Project";
-    }
     project_title = title_input_value;
   }
 
@@ -313,19 +310,19 @@
       </a>
       <!-- Project name and save status -->
       <span class="text-[var(--builder-text-secondary)]">·</span>
-      <div class="flex items-center space-x-3">
+      <div class="flex items-center">
         {#if is_editing_title}
           <input
             type="text"
             bind:value={title_input_value}
             onblur={finish_editing_title}
             onkeydown={handle_title_keydown}
-            class="text-[var(--builder-text-primary)] text-sm font-sans bg-transparent border-b border-[var(--builder-accent)] focus:outline-none px-1"
+            class="text-[var(--builder-text-primary)] text-sm bg-transparent border-b border-[var(--builder-accent)] focus:outline-none px-1"
           />
         {:else}
           <button
             onclick={start_editing_title}
-            class="text-[var(--builder-text-secondary)] text-sm font-sans hover:text-[var(--builder-text-primary)] transition-colors"
+            class="text-[var(--builder-text-secondary)] text-sm hover:text-[var(--builder-text-primary)] transition-colors"
           >
             {project_title}
           </button>

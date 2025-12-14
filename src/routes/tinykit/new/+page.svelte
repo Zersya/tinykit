@@ -39,29 +39,8 @@
     }
 
     try {
-      // Generate a project name using the LLM
-      let project_name = generate_name_from_prompt(prompt); // fallback
-      try {
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-        if (pb.authStore.token) {
-          headers["Authorization"] = `Bearer ${pb.authStore.token}`;
-        }
-        const res = await fetch("/api/ai/generate-name", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ prompt: prompt.trim() }),
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.name) {
-            project_name = json.name;
-          }
-        }
-      } catch {
-        // Use fallback name
-      }
+      // Initialize with blank name so agent can name it
+      let project_name = "";
 
       const project = await project_service.create({
         name: project_name,
@@ -137,21 +116,6 @@
       error_message = `Failed to create project: ${detail}`;
       is_creating = false;
     }
-  }
-
-  function generate_name_from_prompt(prompt: string): string {
-    // Extract first few meaningful words from prompt
-    const words = prompt
-      .replace(/[^\w\s]/g, "")
-      .split(/\s+/)
-      .filter((w) => w.length > 2)
-      .slice(0, 3);
-
-    if (words.length === 0) return "New Project";
-
-    return words
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(" ");
   }
 
   function handle_keydown(e: KeyboardEvent) {
@@ -292,7 +256,7 @@
     </h1>
 
     <!-- Prompt input -->
-    <div class="w-full mb-6">
+    <div class="w-full mb-6 bg-[var(--builder-bg-secondary)] border border-[var(--builder-border)] rounded-lg focus-within:ring-2 focus-within:ring-[var(--builder-accent)] focus-within:border-transparent">
       <div class="relative">
         <textarea
           bind:this={textarea_el}
@@ -301,12 +265,15 @@
           disabled={is_creating}
           placeholder="Describe your app..."
           rows="3"
-          class="w-full px-4 py-4 pr-14 bg-[var(--builder-bg-secondary)] border border-[var(--builder-border)] rounded-lg text-[var(--builder-text-primary)] placeholder:text-[var(--builder-text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--builder-accent)] focus:border-transparent disabled:opacity-50"
+          class="w-full px-4 pt-4 pb-2 bg-transparent text-[var(--builder-text-primary)] placeholder:text-[var(--builder-text-muted)] resize-none focus:outline-none disabled:opacity-50 max-h-48 overflow-y-auto"
         ></textarea>
+        <div class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[var(--builder-bg-secondary)] to-transparent pointer-events-none"></div>
+      </div>
+      <div class="flex justify-end px-3 pb-3">
         <button
           onclick={create_from_prompt}
           disabled={!prompt.trim() || is_creating}
-          class="absolute right-3 bottom-3 px-3 py-2 rounded-md bg-[var(--builder-accent)] text-white hover:bg-[var(--builder-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
+          class="px-3 py-2 rounded-md bg-[var(--builder-accent)] text-white hover:bg-[var(--builder-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
         >
           {#if is_creating}
             <Loader2 class="w-4 h-4 animate-spin" />

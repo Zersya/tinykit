@@ -166,8 +166,7 @@ function get_model(config: AgentConfig) {
 	switch (config.provider) {
 		case 'openai': {
 			const openai = createOpenAI({
-				apiKey: config.apiKey,
-				compatibility: 'strict'
+				apiKey: config.apiKey
 			})
 			return openai(config.model)
 		}
@@ -184,8 +183,8 @@ function get_model(config: AgentConfig) {
 	}
 }
 
-function create_tools(project_id: string) {
-	return {
+function create_tools(project_id: string, project_name: string) {
+	const tools: any = {
 		write_code: tool({
 			description: 'Write client-side code. Use this to create or update the application code.',
 			inputSchema: z.object({
@@ -388,6 +387,22 @@ CSS variable is auto-generated from name: "Card Background" → --card-backgroun
 			}
 		})
 	}
+
+	// Only allow naming if the project hasn't been named yet
+	if (!project_name) {
+		tools.name_project = tool({
+			description: 'Name the project. Use this to set a descriptive name for the project based on the user\'s prompt or the app being built.',
+			inputSchema: z.object({
+				name: z.string().describe('The new name for the project')
+			}),
+			execute: async ({ name }: { name: string }) => {
+				await updateProject(project_id, { name })
+				return `Renamed project to "${name}"`
+			}
+		})
+	}
+
+	return tools
 }
 
 export async function run_agent(
@@ -397,9 +412,6 @@ export async function run_agent(
 	spec?: string,
 	callbacks?: StreamCallbacks
 ): Promise<{ text: string; usage: { promptTokens: number; completionTokens: number } }> {
-	const model = get_model(config)
-	const tools = create_tools(project_id)
-
 	// Build system prompt with spec if provided
 	let system = SYSTEM_PROMPT
 	if (spec?.trim()) {
@@ -409,6 +421,9 @@ export async function run_agent(
 	// Fetch current project state for context
 	const project = await getProject(project_id)
 	if (!project) throw new Error('Project not found')
+
+	const model = get_model(config)
+	const tools = create_tools(project_id, project.name)
 	const current_code = project.frontend_code || ''
 	const existing_design = project.design || []
 	const existing_content = project.content || []
