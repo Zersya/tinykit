@@ -10,6 +10,7 @@
   import Chillhop from "./vibes/Chillhop.svelte";
   import Daybreak from "./vibes/Daybreak.svelte";
   import FancyArt from "./vibes/FancyArt.svelte";
+  import MusicVibe from "./vibes/MusicVibe.svelte";
   import { vibe_zone_state } from "$lib/stores/vibe_zone.svelte";
   import Icon from "@iconify/svelte";
 
@@ -35,7 +36,8 @@
     | "lofigirl"
     | "chillhop"
     | "daybreak"
-    | "museum";
+    | "museum"
+    | "music";
 
   const vibeNames: Record<VibeId, string> = {
     snake: "Snake",
@@ -47,6 +49,7 @@
     chillhop: "Chillhop",
     daybreak: "Daybreak",
     museum: "Fancy Art",
+    music: "Music Maker",
   };
 
   function toggleFullscreen() {
@@ -187,6 +190,8 @@
         <Daybreak />
       {:else if vibe_zone_state.current_vibe === "museum"}
         <FancyArt />
+      {:else if vibe_zone_state.current_vibe === "music"}
+        <MusicVibe />
       {/if}
     {/key}
   </div>

@@ -7,7 +7,8 @@ type VibeId =
 	| "lofigirl"
 	| "chillhop"
 	| "daybreak"
-	| "museum";
+	| "museum"
+	| "music";
 
 const allVibes: VibeId[] = [
 	"snake",
@@ -18,7 +19,8 @@ const allVibes: VibeId[] = [
 	"lofigirl",
 	"chillhop",
 	"daybreak",
-	"museum"
+	"museum",
+	"music"
 ];
 
 function shuffleArray<T>(array: T[]): T[] {

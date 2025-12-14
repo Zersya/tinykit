@@ -461,7 +461,6 @@ export const emoji_to_icon: Record<string, string> = {
   "✂️": "lucide:scissors",
   "🪝": "mdi:hook",
   "⚓": "lucide:anchor",
-  "🧲": "mdi:magnet",
   "🔋": "lucide:battery-full",
   "🪫": "lucide:battery-low",
   "🔌": "mdi:power-plug",

@@ -1,7 +1,20 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import { onMount } from "svelte";
 
   let isMuted = $state(true); // Start muted so autoplay works (browser requirement)
+
+  onMount(() => {
+    const stored = localStorage.getItem("tinykit-studio-mute");
+    if (stored !== null) {
+      isMuted = stored === "true";
+    }
+  });
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    localStorage.setItem("tinykit-studio-mute", String(isMuted));
+  }
 </script>
 
 <div
@@ -28,11 +41,16 @@
   <!-- Controls -->
   <div class="flex items-center space-x-4">
     <button
-      onclick={() => (isMuted = !isMuted)}
-      class="flex items-center gap-2 px-6 py-3 border border-[#2a2a2a] text-gray-400 font-sans hover:border-orange-500 hover:text-orange-500 transition-colors"
+      onclick={toggleMute}
+      class="flex items-center justify-center w-10 h-10 border border-[#2a2a2a] text-gray-400 hover:border-orange-500 hover:text-orange-500 transition-colors rounded-full"
+      title={isMuted ? "Unmute" : "Mute"}
     >
-      <Icon icon={isMuted ? "heroicons:speaker-x-mark-20-solid" : "heroicons:speaker-wave-20-solid"} class="w-4 h-4" />
-      {isMuted ? "Unmute" : "Mute"}
+      <Icon
+        icon={isMuted
+          ? "heroicons:speaker-x-mark-20-solid"
+          : "heroicons:speaker-wave-20-solid"}
+        class="w-5 h-5"
+      />
     </button>
   </div>
 
