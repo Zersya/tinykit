@@ -559,6 +559,14 @@
       <Dialog.Title>tinykit Help</Dialog.Title>
       <Dialog.Description>
         Learn how to use the different features of tinykit.
+        <a
+          href="https://docs.tinykit.studio"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="ml-1 text-[var(--builder-accent)] hover:underline inline-flex items-center gap-0.5"
+        >
+          Read the Docs <ExternalLink size={12} />
+        </a>
       </Dialog.Description>
     </Dialog.Header>
 
@@ -575,22 +583,21 @@
         <Collapsible.Content class="help-section-content">
           <p>
             Design fields create CSS variables that are automatically included
-            in your app. Use them for theming colors, fonts, spacing, and more.
+            in your app. In JS, keys mirror CSS variables.
           </p>
           <div class="code-examples">
-            <div class="code-example">
-              <span class="code-label">Inline style:</span>
-              <code>style="color: var(--primary-color)"</code>
-            </div>
             <div class="code-example">
               <span class="code-label">In CSS:</span>
               <code>background: var(--primary-color);</code>
             </div>
+            <div class="code-example">
+              <span class="code-label">In JS:</span>
+              <code
+                >import design from '$design';<br
+                />console.log(design['--primary-color']);</code
+              >
+            </div>
           </div>
-          <p class="help-note">
-            Variables are injected via <code>/api/design/css</code> which is auto-included
-            in the preview.
-          </p>
         </Collapsible.Content>
       </Collapsible.Root>
 
@@ -606,20 +613,14 @@
         <Collapsible.Content class="help-section-content">
           <p>
             Content fields let you manage app content without code changes.
-            Perfect for text, settings, and configuration that changes
-            frequently.
+            Import them directly using the '$content' module.
           </p>
           <div class="code-examples">
             <div class="code-example">
-              <span class="code-label">Fetch fields:</span>
+              <span class="code-label">Usage:</span>
               <code
-                >const res = await fetch('/api/config') const &#123; fields
-                &#125; = await res.json()</code
-              >
-            </div>
-            <div class="code-example">
-              <span class="code-label">Get by name:</span>
-              <code>fields.find(f => f.name === 'Hero Title')?.value</code>
+                >{@html `import content from '$content';<br />const title = content.hero_title;`}
+              </code>
             </div>
           </div>
         </Collapsible.Content>
@@ -636,24 +637,40 @@
         </Collapsible.Trigger>
         <Collapsible.Content class="help-section-content">
           <p>
-            Data collections store JSON arrays of records. Use them for lists,
-            tables, and any structured data your app needs.
+            Data collections store JSON arrays of records. Use the '$data'
+            module for a database client with realtime updates.
           </p>
           <div class="code-examples">
             <div class="code-example">
               <span class="code-label">Load data:</span>
               <code
-                >const res = await fetch('/api/data/users') const users = await
-                res.json()</code
+                >{@html `import data from '$data';<br />const todos = await data.todos.list();`}</code
               >
             </div>
             <div class="code-example">
-              <span class="code-label">Save data:</span>
+              <span class="code-label">Realtime:</span>
               <code
-                >await fetch('/api/data/users', &#123; method: 'POST', headers:
-                &#123; 'Content-Type': 'application/json' &#125;, body:
-                JSON.stringify(users) &#125;)</code
+                >{@html `let todos = [];
+data.todos.subscribe(records => {
+  todos = records
+});`}</code
               >
+            </div>
+            <div class="code-example">
+              <span class="code-label">Create:</span>
+              <code
+                >{@html `await data.todos.create({ text: 'New Item' });`}</code
+              >
+            </div>
+            <div class="code-example">
+              <span class="code-label">Update:</span>
+              <code
+                >{@html `await data.todos.update('RECORD_ID', { done: true });`}</code
+              >
+            </div>
+            <div class="code-example">
+              <span class="code-label">Delete:</span>
+              <code>{@html `await data.todos.delete('RECORD_ID');`}</code>
             </div>
           </div>
         </Collapsible.Content>
@@ -668,7 +685,7 @@
           />
           <span>Snapshots & History</span>
         </Collapsible.Trigger>
-        <Collapsible.Content class="help-section-content">
+        <Collapsible.Content class="help-section-content prose">
           <p>
             Snapshots let you save and restore your project state. Use them to
             experiment safely or undo changes.
@@ -702,10 +719,6 @@
         </Collapsible.Content>
       </Collapsible.Root>
     </div>
-
-    <Dialog.Footer>
-      <Button onclick={() => (show_help_dialog = false)}>Done</Button>
-    </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
 
