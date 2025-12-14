@@ -16,6 +16,9 @@
     Palette,
     Type,
     Trash2,
+    Eclipse,
+    AlignLeft,
+    Ruler,
   } from "lucide-svelte";
   import AddFieldButton from "../../components/AddFieldButton.svelte";
   import { Button } from "$lib/components/ui/button";

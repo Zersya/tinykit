@@ -1,17 +1,7 @@
-<script lang="ts">
-    import { onMount, onDestroy } from "svelte";
-    import {
-        Music,
-        Play,
-        Square,
-        Volume2,
-        Settings,
-        RefreshCw,
-    } from "lucide-svelte";
-
+<script context="module" lang="ts">
     // --- Audio Engine ---
     class AudioEngine {
-        private ctx: AudioContext | null = null;
+        public ctx: AudioContext | null = null;
         private masterGain: GainNode | null = null;
 
         constructor() {
@@ -24,10 +14,15 @@
             }
         }
 
+        get state() {
+            return this.ctx?.state;
+        }
+
         resume() {
             if (this.ctx?.state === "suspended") {
-                this.ctx.resume();
+                return this.ctx.resume();
             }
+            return Promise.resolve();
         }
 
         playKick(time: number) {
@@ -177,8 +172,22 @@
         }
     }
 
+    // Global Singleton
+    const engine = new AudioEngine();
+</script>
+
+<script lang="ts">
+    import { onMount, onDestroy } from "svelte";
+    import {
+        Music,
+        Play,
+        Square,
+        Volume2,
+        Settings,
+        RefreshCw,
+    } from "lucide-svelte";
+
     // --- Component Logic ---
-    let engine: AudioEngine;
     let isPlaying = $state(false);
     let currentStep = $state(0);
     let bpm = $state(120);
@@ -187,6 +196,10 @@
     let timerID: number | null = null;
     const lookahead = 25.0; // ms
     const scheduleAheadTime = 0.1; // s
+
+    // Responsiveness
+    let containerWidth = $state(0);
+    let isMobile = $derived(containerWidth < 600);
 
     // Instrument Definitions
     type InstrumentType = "kick" | "snare" | "hihat" | "synth";
@@ -235,16 +248,62 @@
     );
 
     onMount(() => {
-        engine = new AudioEngine();
-        // Default beat pattern
-        grid[0][0] = true;
-        grid[0][4] = true;
-        grid[0][8] = true;
-        grid[0][12] = true; // Kick
-        grid[2][2] = true;
-        grid[2][6] = true;
-        grid[2][10] = true;
-        grid[2][14] = true; // HiHat
+        // Load persisted state
+        const savedGrid = localStorage.getItem("tinykit_music_grid");
+        const savedBpm = localStorage.getItem("tinykit_music_bpm");
+        const savedPlaying = localStorage.getItem("tinykit_music_playing");
+
+        if (savedGrid) {
+            try {
+                grid = JSON.parse(savedGrid);
+            } catch (e) {
+                console.error("Failed to parse grid", e);
+            }
+        } else {
+            // Default beat pattern if no save
+            grid[0][0] = true;
+            grid[0][4] = true;
+            grid[0][8] = true;
+            grid[0][12] = true; // Kick
+            grid[2][2] = true;
+            grid[2][6] = true;
+            grid[2][10] = true;
+            grid[2][14] = true; // HiHat
+        }
+
+        if (savedBpm) {
+            bpm = parseInt(savedBpm);
+        }
+
+        // Restore playing state
+        if (savedPlaying === "true") {
+            togglePlay();
+
+            // Re-check suspension (browser blocked autoplay)
+            if (engine.state === "suspended") {
+                const unlock = () => {
+                    engine.resume();
+                    document.removeEventListener("click", unlock);
+                    document.removeEventListener("keydown", unlock);
+                    document.removeEventListener("touchstart", unlock);
+                };
+                document.addEventListener("click", unlock);
+                document.addEventListener("keydown", unlock);
+                document.addEventListener("touchstart", unlock);
+            }
+        }
+
+        // Enable auto-saving
+        isLoaded = true;
+    });
+
+    let isLoaded = $state(false);
+
+    $effect(() => {
+        if (isLoaded) {
+            localStorage.setItem("tinykit_music_grid", JSON.stringify(grid));
+            localStorage.setItem("tinykit_music_bpm", bpm.toString());
+        }
     });
 
     onDestroy(() => {
@@ -300,6 +359,7 @@
             stop();
         } else {
             isPlaying = true;
+            localStorage.setItem("tinykit_music_playing", "true");
             currentStep = 0;
             nextNoteTime = engine.currentTime + 0.05; // Short startup delay
             scheduler();
@@ -308,6 +368,7 @@
 
     function stop() {
         isPlaying = false;
+        localStorage.setItem("tinykit_music_playing", "false");
         if (timerID) {
             clearTimeout(timerID);
             timerID = null;
@@ -323,14 +384,22 @@
     }
 </script>
 
-<div class="h-full w-full flex flex-col p-4 overflow-hidden">
+<div
+    class="h-full w-full flex flex-col p-2 overflow-hidden transition-all"
+    class:p-4={!isMobile}
+    bind:clientWidth={containerWidth}
+>
     <!-- Controls -->
     <div
-        class="flex flex-wrap items-center gap-4 mb-4 p-4 bg-[var(--builder-bg-secondary)] rounded-xl border border-[var(--builder-border)]"
+        class="flex gap-4 mb-4 p-4 bg-[var(--builder-bg-secondary)] rounded-xl border border-[var(--builder-border)] transition-all"
+        class:flex-col={isMobile}
+        class:items-stretch={isMobile}
+        class:flex-row={!isMobile}
+        class:items-center={!isMobile}
     >
-        <div class="flex items-center gap-2 mr-auto min-w-max">
+        <div class="flex items-center gap-2" class:mr-auto={!isMobile}>
             <div
-                class="w-10 h-10 rounded-full bg-[var(--builder-accent)]/10 flex items-center justify-center"
+                class="w-10 h-10 rounded-full bg-[var(--builder-accent)]/10 flex items-center justify-center shrink-0"
             >
                 <Music class="w-5 h-5 text-[var(--builder-accent)]" />
             </div>
@@ -344,8 +413,21 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-4 flex-wrap justify-end flex-1">
-            <div class="flex items-center gap-2">
+        <div
+            class="flex gap-3 w-full"
+            class:flex-col={isMobile}
+            class:items-stretch={isMobile}
+            class:flex-row={!isMobile}
+            class:items-center={!isMobile}
+            class:w-auto={!isMobile}
+        >
+            <div
+                class="flex items-center gap-2 bg-[var(--builder-bg-tertiary)] p-2 rounded-lg"
+                class:justify-between={isMobile}
+                class:justify-start={!isMobile}
+                class:bg-transparent={!isMobile}
+                class:p-0={!isMobile}
+            >
                 <span
                     class="text-xs font-mono text-[var(--builder-text-secondary)]"
                     >BPM</span
@@ -355,7 +437,9 @@
                     min="60"
                     max="180"
                     bind:value={bpm}
-                    class="w-24 accent-[var(--builder-accent)] h-1 bg-[var(--builder-border)] rounded-full appearance-none"
+                    class="accent-[var(--builder-accent)] h-1 bg-[var(--builder-border)] rounded-full appearance-none mx-2 transition-all"
+                    class:flex-1={isMobile}
+                    class:w-24={!isMobile}
                 />
                 <span
                     class="text-xs font-mono w-8 text-right text-[var(--builder-text-primary)]"
@@ -363,25 +447,42 @@
                 >
             </div>
 
-            <div
-                class="h-8 w-px bg-[var(--builder-border)] hidden sm:block"
-            ></div>
+            {#if !isMobile}
+                <div class="h-8 w-px bg-[var(--builder-border)]"></div>
+            {/if}
 
-            <div class="flex items-center gap-2">
+            <div
+                class="flex items-center gap-2"
+                class:justify-stretch={isMobile}
+                class:justify-start={!isMobile}
+            >
                 <button
                     onclick={clearGrid}
-                    class="p-2 text-[var(--builder-text-secondary)] hover:text-[var(--builder-text-primary)] hover:bg-[var(--builder-bg-tertiary)] rounded-full transition-colors"
+                    class="text-[var(--builder-text-secondary)] hover:text-[var(--builder-text-primary)] hover:bg-[var(--builder-bg-tertiary)] rounded-full transition-colors active:scale-95 border flex justify-center items-center"
+                    class:p-3={isMobile}
+                    class:p-2={!isMobile}
+                    class:border-[var(--builder-border)]={isMobile}
+                    class:border-none={!isMobile}
+                    class:flex-1={isMobile}
                     title="Clear Grid"
+                    aria-label="Clear Grid"
                 >
-                    <RefreshCw class="w-4 h-4" />
+                    <RefreshCw class={isMobile ? "w-5 h-5" : "w-4 h-4"} />
                 </button>
 
                 <button
                     onclick={togglePlay}
-                    class="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-white transition-all active:scale-95 shadow-lg shadow-[var(--builder-accent)]/20
-            {isPlaying
-                        ? 'bg-red-500 hover:bg-red-600'
-                        : 'bg-[var(--builder-accent)] hover:bg-[var(--builder-accent-hover)]'}"
+                    class="flex items-center justify-center gap-2 rounded-full font-medium text-white transition-all active:scale-95 shadow-lg shadow-[var(--builder-accent)]/20 text-sm"
+                    class:px-5={isMobile}
+                    class:py-2.5={isMobile}
+                    class:px-4={!isMobile}
+                    class:py-2={!isMobile}
+                    class:text-base={!isMobile}
+                    class:flex-[3]={isMobile}
+                    class:bg-red-500={isPlaying}
+                    class:hover:bg-red-600={isPlaying}
+                    class:bg-[var(--builder-accent)]={!isPlaying}
+                    class:hover:bg-[var(--builder-accent-hover)]={!isPlaying}
                 >
                     {#if isPlaying}
                         <Square class="w-4 h-4 fill-current" />
@@ -397,49 +498,55 @@
 
     <!-- Sequencer Grid -->
     <div
-        class="flex-1 overflow-auto bg-[var(--builder-bg-secondary)] rounded-xl border border-[var(--builder-border)] p-4 relative"
+        class="flex-1 overflow-auto bg-[var(--builder-bg-secondary)] rounded-xl border border-[var(--builder-border)] p-2 sm:p-4 relative"
     >
-        <div class="grid gap-2 min-w-max">
+        <div class="grid gap-2 min-w-max pb-6">
             {#each instruments as inst, i}
                 <div class="flex items-center gap-2 group">
                     <!-- Labels (Sticky) -->
                     <div
-                        class="w-20 text-xs font-medium text-[var(--builder-text-secondary)] text-right pr-2 sticky left-0 bg-[var(--builder-bg-secondary)] z-10 transition-colors group-hover:text-[var(--builder-text-primary)] truncate"
+                        class="h-full flex items-center justify-center w-16 sm:w-20 text-xs font-medium text-[var(--builder-text-secondary)] text-right pr-2 sticky left-0 bg-[var(--builder-bg-secondary)] z-20 transition-colors group-hover:text-[var(--builder-text-primary)] truncate border-r border-[var(--builder-border)]/50 sm:border-none shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] sm:shadow-none"
                     >
                         {inst.name}
                     </div>
 
                     <!-- Steps -->
-                    <div class="flex gap-1">
+                    <div class="flex gap-1.5 sm:gap-1">
                         {#each Array(steps) as _, step}
                             {@const isActive = grid[i][step]}
                             {@const isCurrent =
                                 isPlaying && currentStep === step}
                             {@const isBeat = step % 4 === 0}
                             <button
-                                class="w-8 h-10 rounded-sm border transition-all duration-75 relative shrink-0"
+                                class="w-10 h-10 sm:w-9 sm:h-10 rounded-md sm:rounded-sm border transition-all duration-75 relative shrink-0"
                                 style="
-                    background-color: {isActive ? inst.color : 'transparent'};
-                    border-color: {isActive
+                                    background-color: {isActive
+                                    ? inst.color
+                                    : 'transparent'};
+                                    border-color: {isActive
                                     ? inst.color
                                     : 'var(--builder-border)'};
-                    opacity: {isCurrent
+                                    opacity: {isCurrent
                                     ? isActive
                                         ? 1
                                         : 0.5
                                     : isActive
                                       ? 0.9
                                       : 0.2};
-                    transform: {isCurrent ? 'scale(1.05)' : 'scale(1)'};
-                  "
+                                    transform: {isCurrent
+                                    ? 'scale(1.05)'
+                                    : 'scale(1)'};
+                                "
                                 class:border-l-2={isBeat && !isActive}
                                 class:border-l-[var(--builder-text-secondary)]={isBeat &&
                                     !isActive}
                                 onclick={() => toggleCell(i, step)}
+                                aria-label="Toggle step {step +
+                                    1} for {inst.name}"
                             >
                                 {#if isCurrent}
                                     <div
-                                        class="absolute inset-0 bg-white/20 animate-pulse"
+                                        class="absolute inset-0 bg-white/20 animate-pulse rounded-sm"
                                     ></div>
                                 {/if}
                             </button>
@@ -447,20 +554,22 @@
                     </div>
                 </div>
             {/each}
-        </div>
 
-        <!-- Step Indicators (Bottom) -->
-        <div class="flex gap-1 mt-2 ml-[5.5rem] min-w-max">
-            {#each Array(steps) as _, step}
-                <div class="w-8 flex justify-center shrink-0">
-                    <div
-                        class="w-1 h-1 rounded-full bg-[var(--builder-accent)] transition-opacity duration-75"
-                        style="opacity: {isPlaying && currentStep === step
-                            ? 1
-                            : 0}"
-                    ></div>
-                </div>
-            {/each}
+            <!-- Step Indicators (Bottom) -->
+            <div
+                class="flex gap-1.5 sm:gap-1 mt-1 ml-[4.5rem] sm:ml-[5.5rem] min-w-max"
+            >
+                {#each Array(steps) as _, step}
+                    <div class="w-10 sm:w-9 flex justify-center shrink-0">
+                        <div
+                            class="w-1.5 h-1.5 rounded-full bg-[var(--builder-accent)] transition-opacity duration-75"
+                            style="opacity: {isPlaying && currentStep === step
+                                ? 1
+                                : 0}"
+                        ></div>
+                    </div>
+                {/each}
+            </div>
         </div>
     </div>
 </div>
