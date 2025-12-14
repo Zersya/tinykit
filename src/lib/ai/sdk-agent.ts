@@ -102,8 +102,8 @@ Common icons: plus, x, edit, trash-2, search, settings, user, home, heart, star,
 import data from '$data'
 
 // All data persists to the database - survives page refreshes and server restarts
-// Subscribe for realtime updates (returns unsubscribe fn)
-$effect(() => data.todos.subscribe(items => { todos = items; loading = false }))
+// Subscribe for realtime updates
+data.todos.subscribe(items => { todos = items; loading = false })
 
 // CRUD operations - changes save to database, realtime auto-updates UI
 await data.todos.create({ title: 'New' })
@@ -154,7 +154,6 @@ Extract ALL text: titles, buttons, placeholders, empty states, messages.
 ## Common Mistakes (AVOID)
 - \`$derived(items.filter(...))\` → use \`$derived.by(() => items.filter(...))\` for callbacks
 - \`result.sort()\` in $derived → use \`[...result].sort()\` (sort mutates, copy first)
-- Missing return in $effect → \`$effect(() => { return data.x.subscribe(...) })\` for cleanup
 - \`on:click\` → use \`onclick\` (Svelte 5)
 - \`export let x\` → use \`let { x } = $props()\` (Svelte 5)
 - No loading state → always \`let loading = $state(true)\`, set false in subscribe callback
