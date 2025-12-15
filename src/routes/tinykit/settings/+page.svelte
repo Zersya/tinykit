@@ -19,6 +19,7 @@
 		api_key: string;
 		model: string;
 		base_url?: string;
+		has_api_key?: boolean;
 	}
 
 	const PROVIDERS = [
@@ -78,6 +79,8 @@
 		"idle",
 	);
 	let validation_error = $state<string | null>(null);
+	let api_key_modified = $state(false);
+	let masked_api_key = $state("");
 
 	let available_models = $derived(
 		PROVIDERS.find((p) => p.id === config.provider)?.models || [],
@@ -100,7 +103,14 @@
 			});
 			const data = await res.json();
 			if (data.value) {
-				config = { ...config, ...data.value };
+				// Store masked key separately, clear the input field
+				masked_api_key = data.value.api_key || "";
+				config = {
+					...config,
+					...data.value,
+					api_key: "", // Don't populate input with masked value
+				};
+				api_key_modified = false;
 			}
 		} catch (err: any) {
 			console.error("Failed to load settings:", err);
@@ -115,12 +125,16 @@
 		save_success = false;
 
 		try {
-			const value = {
+			const value: Record<string, any> = {
 				provider: config.provider,
-				api_key: config.api_key,
 				model: config.model,
 				base_url: config.base_url || null,
 			};
+
+			// Only include api_key if user entered a new one
+			if (api_key_modified && config.api_key) {
+				value.api_key = config.api_key;
+			}
 
 			const res = await fetch("/api/settings", {
 				method: "POST",
@@ -134,6 +148,14 @@
 			const data = await res.json();
 			if (!res.ok) {
 				throw new Error(data.error || "Failed to save settings");
+			}
+
+			// If we saved a new key, update the masked display
+			if (api_key_modified && config.api_key) {
+				masked_api_key = "•".repeat(Math.min(config.api_key.length - 4, 20)) + config.api_key.slice(-4);
+				config.api_key = "";
+				config.has_api_key = true;
+				api_key_modified = false;
 			}
 
 			save_success = true;
@@ -196,7 +218,8 @@
 	}
 
 	function handle_api_key_change() {
-		// Reset validation when key changes
+		// Mark as modified and reset validation when key changes
+		api_key_modified = true;
 		validation_status = "idle";
 		validation_error = null;
 	}
@@ -273,6 +296,11 @@
 								class="block text-sm font-medium text-[var(--builder-text-secondary)] mb-2"
 							>
 								API Key
+								{#if config.has_api_key && !api_key_modified}
+									<span class="ml-2 text-green-500 font-normal">
+										✓ Configured
+									</span>
+								{/if}
 								{#if API_KEY_URLS[config.provider]}
 									<a
 										href={API_KEY_URLS[config.provider]}
@@ -293,7 +321,9 @@
 											: "password"}
 										bind:value={config.api_key}
 										oninput={handle_api_key_change}
-										placeholder="Enter your API key"
+										placeholder={config.has_api_key && !api_key_modified
+											? masked_api_key || "Enter new key to replace"
+											: "Enter your API key"}
 										class="w-full px-3 py-2 pr-10 bg-[var(--builder-bg-tertiary)] border border-[var(--builder-border)] rounded-lg text-[var(--builder-text-primary)] placeholder:text-[var(--builder-text-muted)] focus:outline-none focus:border-[var(--builder-accent)] font-mono text-sm"
 									/>
 									<button
@@ -338,6 +368,10 @@
 								<p class="text-xs text-red-400 mt-1.5">
 									{validation_error}
 								</p>
+							{:else if config.has_api_key && !api_key_modified}
+								<p class="text-xs text-[var(--builder-text-muted)] mt-1.5">
+									Enter a new key to replace the existing one
+								</p>
 							{/if}
 						</div>
 
@@ -374,7 +408,7 @@
 				{/if}
 
 				<!-- Info message when no API key -->
-				{#if !config.api_key}
+				{#if !config.has_api_key && !config.api_key}
 					<div
 						class="px-4 py-3 bg-[var(--builder-bg-tertiary)] border border-[var(--builder-border)] rounded-lg text-[var(--builder-text-secondary)] text-sm"
 					>
