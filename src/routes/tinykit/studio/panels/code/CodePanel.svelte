@@ -22,12 +22,12 @@ import { db, env, queue } from '$services'
 
 // --- 1. API Endpoints ---
 
-// GET /api/fn/health
+// GET /api/health
 export const health = async () => {
   return { status: 'ok' }
 }
 
-// POST /api/fn/summarize
+// POST /api/summarize
 export const summarize = {
   post: async (context) => {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {

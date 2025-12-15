@@ -10,12 +10,14 @@
   import { Label } from "$lib/components/ui/label";
   import * as Select from "$lib/components/ui/select";
   import * as Dialog from "$lib/components/ui/dialog";
+  import { Switch } from "$lib/components/ui/switch";
   import type { DataRecord } from "../../../types";
   import * as api from "../../../lib/api.svelte";
   import { getProjectContext } from "../../../context";
   import { pb } from "$lib/pocketbase.svelte";
   import { getProjectStore } from "../../project.svelte";
   import FileField from "../../components/FileField.svelte";
+  import JsonEditor from "../../components/JsonEditor.svelte";
 
   const { project_id } = getProjectContext();
   const store = getProjectStore();
@@ -482,6 +484,8 @@
         return 0;
       case "boolean":
         return false;
+      case "json":
+        return {};
       default:
         return "";
     }
@@ -1072,12 +1076,12 @@
             e.preventDefault();
             save_edit_record();
           }}
-          class="flex flex-col gap-4 py-4"
+          class="flex flex-col gap-4 py-4 overflow-hidden min-w-0"
         >
-          <div class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
+          <div class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1 min-w-0 overflow-x-hidden">
             {#each columns as col}
               {@const col_type = get_column_type(file_content.schema, col)}
-              <div class="flex flex-col gap-1.5">
+              <div class="flex flex-col gap-1.5 min-w-0 overflow-hidden">
                 <Label for="edit-{col}">{col}</Label>
                 {#if col_type === "id"}
                   <Input
@@ -1095,23 +1099,12 @@
                     multiple
                   />
                 {:else if col_type === "boolean"}
-                  <Select.Root
-                    type="single"
-                    value={String(editing_record[col])}
-                    onValueChange={(v) => {
-                      if (editing_record) editing_record[col] = v === "true";
+                  <Switch
+                    checked={editing_record[col] === true}
+                    onCheckedChange={(v) => {
+                      if (editing_record) editing_record[col] = v
                     }}
-                  >
-                    <Select.Trigger class="w-full">
-                      {editing_record[col] ? "true" : "false"}
-                    </Select.Trigger>
-                    <Select.Content>
-                      <Select.Item value="true" label="true">true</Select.Item>
-                      <Select.Item value="false" label="false"
-                        >false</Select.Item
-                      >
-                    </Select.Content>
-                  </Select.Root>
+                  />
                 {:else if col_type === "number"}
                   <Input
                     id="edit-{col}"
@@ -1122,6 +1115,21 @@
                       if (editing_record)
                         editing_record[col] = Number(e.currentTarget.value);
                     }}
+                  />
+                {:else if col_type === "json"}
+                  <JsonEditor
+                    value={typeof editing_record[col] === "string" ? editing_record[col] : JSON.stringify(editing_record[col] ?? {}, null, 2)}
+                    onchange={(val) => {
+                      if (editing_record) {
+                        try {
+                          editing_record[col] = JSON.parse(val);
+                        } catch {
+                          editing_record[col] = val;
+                        }
+                      }
+                    }}
+                    min_height="80px"
+                    max_height="200px"
                   />
                 {:else}
                   <Input id="edit-{col}" bind:value={editing_record[col]} />
@@ -1158,12 +1166,12 @@
             e.preventDefault();
             save_new_record();
           }}
-          class="flex flex-col gap-4 py-4"
+          class="flex flex-col gap-4 py-4 overflow-hidden min-w-0"
         >
-          <div class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
+          <div class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1 min-w-0 overflow-x-hidden">
             {#each columns as col}
               {@const col_type = get_column_type(file_content.schema, col)}
-              <div class="flex flex-col gap-1.5">
+              <div class="flex flex-col gap-1.5 min-w-0 overflow-hidden">
                 <Label for="add-{col}">{col}</Label>
                 {#if col_type === "id"}
                   <Input
@@ -1181,23 +1189,12 @@
                     multiple
                   />
                 {:else if col_type === "boolean"}
-                  <Select.Root
-                    type="single"
-                    value={String(new_record[col])}
-                    onValueChange={(v) => {
-                      new_record[col] = v === "true";
+                  <Switch
+                    checked={new_record[col] === true}
+                    onCheckedChange={(v) => {
+                      new_record[col] = v
                     }}
-                  >
-                    <Select.Trigger class="w-full">
-                      {new_record[col] ? "true" : "false"}
-                    </Select.Trigger>
-                    <Select.Content>
-                      <Select.Item value="true" label="true">true</Select.Item>
-                      <Select.Item value="false" label="false"
-                        >false</Select.Item
-                      >
-                    </Select.Content>
-                  </Select.Root>
+                  />
                 {:else if col_type === "number"}
                   <Input
                     id="add-{col}"
@@ -1207,6 +1204,19 @@
                     oninput={(e) => {
                       new_record[col] = Number(e.currentTarget.value);
                     }}
+                  />
+                {:else if col_type === "json"}
+                  <JsonEditor
+                    value={typeof new_record[col] === "string" ? new_record[col] : JSON.stringify(new_record[col] ?? {}, null, 2)}
+                    onchange={(val) => {
+                      try {
+                        new_record[col] = JSON.parse(val);
+                      } catch {
+                        new_record[col] = val;
+                      }
+                    }}
+                    min_height="80px"
+                    max_height="200px"
                   />
                 {:else}
                   <Input id="add-{col}" bind:value={new_record[col]} />

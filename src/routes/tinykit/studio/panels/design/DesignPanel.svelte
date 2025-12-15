@@ -2,6 +2,8 @@
   import { tick } from "svelte";
   import { watch } from "runed";
   import { slide } from "svelte/transition";
+  import { dragHandleZone, dragHandle } from "svelte-dnd-action";
+  import Icon from "@iconify/svelte";
   import * as Dialog from "$lib/components/ui/dialog";
   import type { DesignField, DesignFieldType } from "../../../types";
   import ColorPalette from "../../components/ColorPalette.svelte";
@@ -21,6 +23,7 @@
     Ruler,
   } from "lucide-svelte";
   import AddFieldButton from "../../components/AddFieldButton.svelte";
+  import TypeGrid from "../../components/TypeGrid.svelte";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -173,13 +176,19 @@
     value: DesignFieldType;
     label: string;
     default: string;
+    icon: typeof Palette;
   }[] = [
-    { value: "color", label: "Color", default: "#3b82f6" },
-    { value: "size", label: "Size", default: "16px" },
-    { value: "font", label: "Font", default: "Inter" },
-    { value: "radius", label: "Radius", default: "8px" },
-    { value: "shadow", label: "Shadow", default: "0 4px 6px rgba(0,0,0,0.1)" },
-    { value: "text", label: "Custom", default: "" },
+    { value: "color", label: "Color", default: "#3b82f6", icon: Palette },
+    { value: "size", label: "Size", default: "16px", icon: Ruler },
+    { value: "font", label: "Font", default: "Inter", icon: Type },
+    { value: "radius", label: "Radius", default: "8px", icon: Square },
+    {
+      value: "shadow",
+      label: "Shadow",
+      default: "0 4px 6px rgba(0,0,0,0.1)",
+      icon: Eclipse,
+    },
+    { value: "text", label: "Custom", default: "", icon: AlignLeft },
   ];
 
   // Bunny Fonts state
@@ -351,23 +360,6 @@
     return match?.[1] || "px";
   }
 
-  function get_type_icon(type: DesignFieldType) {
-    switch (type) {
-      case "color":
-        return Palette;
-      case "size":
-        return Ruler;
-      case "font":
-        return Type;
-      case "radius":
-        return Square;
-      case "shadow":
-        return Eclipse;
-      default:
-        return AlignLeft;
-    }
-  }
-
   // Edit dialog state
   let show_edit_modal = $state(false);
   let editing_field: DesignField | null = $state(null);
@@ -459,14 +451,38 @@
         .forEach((f) => load_font_preview(f.familyName));
     }
   });
+
+  // DnD for reordering fields
+  const FLIP_DURATION = 150;
+
+  function handle_dnd_consider(e: CustomEvent<{ items: DesignField[] }>) {
+    design_fields = e.detail.items;
+  }
+
+  async function handle_dnd_finalize(e: CustomEvent<{ items: DesignField[] }>) {
+    design_fields = e.detail.items;
+    try {
+      await api.reorder_design_fields(project_id, design_fields);
+    } catch (err) {
+      console.error("Failed to reorder design fields:", err);
+    }
+  }
 </script>
 
 <div class="design-panel bg-white/[0.025]">
   <!-- Field list -->
-  <div class="field-list">
+  <div
+    class="field-list"
+    use:dragHandleZone={{
+      items: design_fields,
+      flipDurationMs: FLIP_DURATION,
+      dropTargetStyle: {},
+    }}
+    onconsider={handle_dnd_consider}
+    onfinalize={handle_dnd_finalize}
+  >
     {#each design_fields as field (field.id)}
       {@const is_expanded = expanded_fields.has(field.id)}
-      {@const TypeIcon = get_type_icon(field.type)}
       <div
         bind:this={field_elements[field.id]}
         class="field-item"
@@ -485,6 +501,15 @@
           </div>
 
           <div class="field-actions">
+            <div
+              use:dragHandle
+              aria-label="drag-handle"
+              class="drag-handle"
+              title="Drag to reorder"
+            >
+              <Icon icon="ic:baseline-drag-handle" class="w-4 h-4" />
+            </div>
+
             <button
               class="edit-btn"
               onclick={(e) => {
@@ -672,20 +697,7 @@
       <!-- Type selector -->
       <div class="form-group">
         <Label>Type</Label>
-        <div class="type-grid">
-          {#each field_types as t (t.value)}
-            {@const Icon = get_type_icon(t.value)}
-            <button
-              type="button"
-              onclick={() => set_type(t.value)}
-              class="type-btn"
-              class:active={new_type === t.value}
-            >
-              <Icon size={18} />
-              <span>{t.label}</span>
-            </button>
-          {/each}
-        </div>
+        <TypeGrid types={field_types} selected={new_type} onselect={set_type} />
       </div>
 
       <!-- Name -->
@@ -861,20 +873,11 @@
       <!-- Type -->
       <div class="form-group">
         <Label>Type</Label>
-        <div class="type-grid">
-          {#each field_types as t (t.value)}
-            {@const Icon = get_type_icon(t.value)}
-            <button
-              type="button"
-              onclick={() => (edit_type = t.value)}
-              class="type-btn"
-              class:active={edit_type === t.value}
-            >
-              <Icon size={18} />
-              <span>{t.label}</span>
-            </button>
-          {/each}
-        </div>
+        <TypeGrid
+          types={field_types}
+          selected={edit_type}
+          onselect={(v) => (edit_type = v as DesignFieldType)}
+        />
       </div>
     </div>
 
@@ -912,6 +915,32 @@
     /* overflow: hidden; */
     transition: box-shadow 0.3s ease-out;
     container-type: inline-size;
+    position: relative;
+  }
+
+  .drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    cursor: grab;
+    color: var(--builder-text-secondary);
+    opacity: 0;
+    transition: opacity 0.15s;
+    border-radius: 4px;
+  }
+
+  .drag-handle:active {
+    cursor: grabbing;
+  }
+
+  .field-header:hover .drag-handle {
+    opacity: 0.5;
+  }
+
+  .field-header:hover .drag-handle:hover {
+    opacity: 1;
   }
 
   /* Highlight animation for targeted fields */
@@ -957,7 +986,7 @@
   }
 
   .field-name {
-    font-size: 13px;
+    font-size: 0.875rem;
     font-weight: 400;
     color: var(--builder-text-primary);
     white-space: nowrap;
@@ -1283,38 +1312,6 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-
-  .type-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-
-  .type-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 12px 8px;
-    border-radius: 8px;
-    border: 1px solid var(--builder-border);
-    background: var(--builder-bg-secondary);
-    color: var(--builder-text-secondary);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-size: 12px;
-  }
-
-  .type-btn:hover {
-    border-color: var(--builder-text-secondary);
-    color: var(--builder-text-primary);
-  }
-
-  .type-btn.active {
-    border-color: var(--builder-accent);
-    color: var(--builder-accent);
   }
 
   .hint {

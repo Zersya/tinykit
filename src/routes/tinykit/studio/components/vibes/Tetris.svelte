@@ -440,7 +440,7 @@
   <!-- Game Over -->
   {#if gameOver}
     <div
-      class="absolute inset-0 mt-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+      class="absolute -inset-4 mt-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
     >
       <div class="text-center space-y-4">
         <div class="text-red-500 text-5xl font-sans">GAME OVER</div>
