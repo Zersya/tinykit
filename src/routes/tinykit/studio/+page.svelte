@@ -64,6 +64,61 @@
 		"history",
 	];
 
+	// Map tool names to their corresponding tabs
+	const tool_to_tab: Record<string, TabId> = {
+		write_code: "code",
+		create_content_field: "content",
+		update_content_field: "content",
+		create_design_field: "design",
+		update_design_field: "design",
+		create_data_file: "data",
+		insert_records: "data",
+		add_data_record: "data",
+		update_data_record: "data",
+		delete_data_record: "data"
+	};
+
+	// Track tool tabs that should flash momentarily
+	let active_tool_tabs = $state(new Set<TabId>());
+	let seen_tools = $state(new Set<string>()); // Track tools we've already processed
+
+	// Watch for new tools and flash their tabs momentarily
+	$effect(() => {
+		if (!store.is_processing) {
+			// Reset when processing stops
+			seen_tools = new Set();
+			return;
+		}
+
+		const messages = store.messages;
+		if (messages.length === 0) return;
+
+		const last_msg = messages[messages.length - 1];
+		if (last_msg.role !== "assistant" || !last_msg.stream_items) return;
+
+		// Check for new tools
+		for (const item of last_msg.stream_items) {
+			if (item.type === "tool" && item.name) {
+				// Create unique key for this tool call
+				const tool_key = `${item.name}-${item.id || item.name}`;
+				if (!seen_tools.has(tool_key)) {
+					seen_tools.add(tool_key);
+					const tab = tool_to_tab[item.name];
+					if (tab) {
+						// Flash this tab
+						active_tool_tabs.add(tab);
+						active_tool_tabs = new Set(active_tool_tabs); // trigger reactivity
+						// Remove after brief flash
+						setTimeout(() => {
+							active_tool_tabs.delete(tab);
+							active_tool_tabs = new Set(active_tool_tabs);
+						}, 800);
+					}
+				}
+			}
+		}
+	});
+
 	// Set project context for child components
 	setProjectContext({ project_id });
 
@@ -504,6 +559,7 @@
 			{save_status}
 			{tabs}
 			{current_tab}
+			{active_tool_tabs}
 			on_tab_change={set_tab}
 			on_deploy={handle_deploy}
 			on_load_templates={handle_load_templates}
@@ -846,6 +902,7 @@
 			{save_status}
 			{tabs}
 			{current_tab}
+			{active_tool_tabs}
 			on_tab_change={set_tab}
 			on_deploy={handle_deploy}
 			on_load_templates={handle_load_templates}

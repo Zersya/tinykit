@@ -40,6 +40,7 @@
     };
     tabs: Tab[];
     current_tab: TabId;
+    active_tool_tabs?: Set<TabId>;
     on_tab_change: (tab: TabId) => void;
     on_deploy: () => void;
     on_load_templates: () => void;
@@ -57,6 +58,7 @@
     save_status = { is_saving: false, has_unsaved: false, last_saved_at: null },
     tabs,
     current_tab,
+    active_tool_tabs = new Set(),
     on_tab_change,
     on_deploy,
     on_load_templates,
@@ -237,12 +239,14 @@
       <DropdownMenu.Content align="center" class="w-48">
         {#each tabs as tab}
           {@const Icon = tab.icon}
+          {@const is_tool_active = active_tool_tabs.has(tab.id)}
+          {@const tool_class = is_tool_active ? `tool-active tool-active--${tab.id}` : ''}
           <DropdownMenu.Item
             onclick={() => on_tab_change(tab.id)}
             class="cursor-pointer hover:bg-[var(--builder-bg-secondary)] flex items-center gap-3 py-3 text-base {current_tab ===
             tab.id
               ? 'bg-[var(--builder-bg-secondary)]'
-              : ''}"
+              : ''} {tool_class}"
           >
             <Icon class="w-5 h-5" />
             <span>{tab.label}</span>
@@ -301,7 +305,8 @@
 {:else}
   <!-- Desktop Header -->
   <header
-    class="h-12 border-b border-[var(--builder-border)] bg-[var(--builder-bg-primary)] flex items-center justify-between px-4 relative z-30"
+    class="h-12 border-b bg-[var(--builder-bg-primary)] flex items-center justify-between px-4 relative z-30"
+    style="border-color: color-mix(in srgb, var(--builder-border) 40%, transparent)"
   >
     <!-- Left: Logo -->
     <div class="flex items-center space-x-3 flex-shrink-0">
@@ -364,12 +369,18 @@
       <div class="flex items-center">
         {#each tabs as tab}
           {@const Icon = tab.icon}
+          {@const is_tool_active = active_tool_tabs.has(tab.id)}
           <button
             data-tab-id={tab.id}
             class="pl-3 pr-4 h-12 flex items-center gap-1.5 text-xs font-sans relative transition-colors whitespace-nowrap {current_tab ===
             tab.id
               ? 'text-[var(--builder-text-primary)]'
               : 'text-[var(--builder-text-secondary)] hover:text-[var(--builder-text-primary)]'}"
+            class:tool-active={is_tool_active}
+            class:tool-active--code={is_tool_active && tab.id === "code"}
+            class:tool-active--content={is_tool_active && tab.id === "content"}
+            class:tool-active--design={is_tool_active && tab.id === "design"}
+            class:tool-active--data={is_tool_active && tab.id === "data"}
             onclick={() => on_tab_change(tab.id)}
           >
             <span
@@ -862,5 +873,41 @@ data.todos.subscribe(records => {
 
   .logo:hover {
     opacity: 0.8;
+  }
+
+  /* Tool active glow effects - momentary flash */
+  .tool-active {
+    animation: tool-flash 0.8s ease-out forwards;
+  }
+
+  .tool-active--code {
+    color: var(--tool-code) !important;
+    text-shadow: 0 0 12px color-mix(in srgb, var(--tool-code) 80%, transparent);
+  }
+
+  .tool-active--content {
+    color: var(--tool-content) !important;
+    text-shadow: 0 0 12px color-mix(in srgb, var(--tool-content) 80%, transparent);
+  }
+
+  .tool-active--design {
+    color: var(--tool-design) !important;
+    text-shadow: 0 0 12px color-mix(in srgb, var(--tool-design) 80%, transparent);
+  }
+
+  .tool-active--data {
+    color: var(--tool-data) !important;
+    text-shadow: 0 0 12px color-mix(in srgb, var(--tool-data) 80%, transparent);
+  }
+
+  @keyframes tool-flash {
+    0% {
+      opacity: 1;
+      filter: brightness(1.3);
+    }
+    100% {
+      opacity: 1;
+      filter: brightness(1);
+    }
   }
 </style>
