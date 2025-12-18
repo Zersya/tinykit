@@ -1,6 +1,6 @@
-# tinykit [![Discord](https://img.shields.io/badge/Discord-Join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/NfMjt3yUtn) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE) [![X](https://img.shields.io/badge/@tinykit--studio-22c55e?logo=x)](https://x.com/tinykit_studio) [![Bluesky](https://img.shields.io/badge/@tinykit--studio-22c55e?logo=bluesky)](https://bsky.app/profile/tinykit-studio.bsky.social)
+# <span style="margin-right:1rem">Tinykit</span> [![Discord](https://img.shields.io/badge/Discord-Join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/NfMjt3yUtn) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE) [![X](https://img.shields.io/badge/@tinykit--studio-22c55e?logo=x)](https://x.com/tinykit_studio) [![Bluesky](https://img.shields.io/badge/@tinykit--studio-22c55e?logo=bluesky)](https://bsky.app/profile/tinykit-studio.bsky.social)
 
-**Open-source agentic app builder.** Think Lovable, Replit, or v0—but self-hostable and self-contained. Build, tweak, and deploy all your tiny web apps on a single server controlled entirely by you.
+**Open-source agentic app builder.** Think Lovable, Replit, or v0, but self-hostable and self-contained. Build, tweak, and deploy all your tiny web apps on a single server controlled entirely by you.
 
 Build at `/tinykit`, deploy to `/`
 
@@ -26,7 +26,7 @@ Build at `/tinykit`, deploy to `/`
 | **Backend Functionality** *(soon)* | Background jobs, CRON, and server-side routes. |
 | **Authentication** *(soon)* | Enable email and OAuth signup in your built apps. |
 | **Showcase** *(soon)* | Browse and one-click install community apps. |
-| **Using LLMs in your apps** *(soon)* | Prompt engineering, AI-powered features, and agentic workflows in your apps. |
+| **LLM Functionality** *(soon)* | Use AI-powered features, and agentic workflows in your apps. |
 
 **Run hundreds of apps on one server.** Point any domain → get a working app.
 
