@@ -209,6 +209,9 @@ export async function createProject(data: {
 // Queue updates per project to prevent race conditions (read-modify-write cycles)
 const updateQueues = new Map<string, Promise<any>>()
 
+// Separate locks for atomic read-modify-write operations
+const projectLocks = new Map<string, Promise<any>>()
+
 /**
  * Update project fields
  */
@@ -224,8 +227,7 @@ export async function updateProject(projectId: string, data: any): Promise<Proje
 	const prev = updateQueues.get(projectId) || Promise.resolve()
 
 	const task = prev.catch(() => { }).then(async () => {
-		// Perform the actual update
-		return (await pb.collection('_tk_projects').update(projectId, data)) as unknown as Project
+		return await pb.collection('_tk_projects').update(projectId, data) as unknown as Project
 	})
 
 	updateQueues.set(projectId, task)
@@ -254,7 +256,7 @@ export async function deleteProject(projectId: string): Promise<boolean> {
 /**
  * Create a snapshot of current project state
  */
-export async function createSnapshot(projectId: string, description: string) {
+export async function createSnapshot(projectId: string, description: string, tools?: string[]) {
 	const project = await getProject(projectId)
 	if (!project) return null
 
@@ -277,6 +279,7 @@ export async function createSnapshot(projectId: string, description: string) {
 		id: `snap_${Date.now()}`,
 		timestamp: Date.now(),
 		description,
+		tools,
 		frontend_code: project.frontend_code || '',
 		design: project.design || [],
 		content: project.content || [],
@@ -428,4 +431,199 @@ export async function getLLMSettings(): Promise<LLMSettings | null> {
 		// 404 or other error - no settings configured
 	}
 	return null
+}
+
+/**
+ * Helper to run an atomic read-modify-write operation on a project.
+ * This ensures that concurrent operations don't overwrite each other.
+ */
+async function withProjectLock<T>(projectId: string, fn: () => Promise<T>): Promise<T> {
+	// Wait for any existing lock on this project
+	const prev = projectLocks.get(projectId) || Promise.resolve()
+
+	const task = prev.catch(() => {}).then(fn)
+
+	projectLocks.set(projectId, task)
+
+	// Clean up when done
+	task.finally(() => {
+		if (projectLocks.get(projectId) === task) {
+			projectLocks.delete(projectId)
+		}
+	})
+
+	return task
+}
+
+/**
+ * Atomically add a content field to a project.
+ * Returns the created field or null if it already exists.
+ */
+export async function addContentField(
+	projectId: string,
+	field: { name: string; type: string; value: any; description?: string }
+): Promise<{ id: string; name: string; type: string; value: any; description: string } | null> {
+	return withProjectLock(projectId, async () => {
+		const project = await getProject(projectId)
+		if (!project) throw new Error('Project not found')
+
+		const fields = [...(project.content || [])]
+
+		// Check for duplicates by name
+		if (fields.find((f: any) => f.name === field.name)) {
+			return null // Already exists
+		}
+
+		const new_field = {
+			id: crypto.randomUUID().slice(0, 5),
+			name: field.name,
+			type: field.type,
+			value: field.type === 'boolean' ? field.value === 'true' || field.value === true : field.value,
+			description: field.description || ''
+		}
+
+		fields.push(new_field)
+		await updateProject(projectId, { content: fields })
+		return new_field
+	})
+}
+
+/**
+ * Atomically add a design field to a project.
+ * Returns the created field or null if it already exists.
+ */
+export async function addDesignField(
+	projectId: string,
+	field: { name: string; css_var: string; type: string; value: string; description?: string }
+): Promise<{ id: string; name: string; css_var: string; type: string; value: string; description: string; unit?: string; min?: number; max?: number } | null> {
+	return withProjectLock(projectId, async () => {
+		const project = await getProject(projectId)
+		if (!project) throw new Error('Project not found')
+
+		const design = [...(project.design || [])]
+
+		// Check for duplicates by css_var
+		if (design.find((f: any) => f.css_var === field.css_var)) {
+			return null // Already exists
+		}
+
+		const new_field: any = {
+			id: crypto.randomUUID().slice(0, 5),
+			name: field.name,
+			css_var: field.css_var,
+			value: field.value,
+			type: field.type,
+			description: field.description || ''
+		}
+
+		if (field.type === 'size' || field.type === 'radius') {
+			new_field.unit = 'px'
+			if (field.type === 'radius') {
+				new_field.min = 0
+				new_field.max = 50
+			}
+		}
+
+		design.push(new_field)
+		await updateProject(projectId, { design })
+		return new_field
+	})
+}
+
+/**
+ * Atomically add a data collection to a project.
+ * Returns success message or error if collection exists.
+ */
+export async function addDataCollection(
+	projectId: string,
+	collection: {
+		filename: string
+		schema: Array<{ name: string; type: string }>
+		records: any[]
+		icon?: string
+	}
+): Promise<{ success: boolean; message: string; records_count?: number }> {
+	return withProjectLock(projectId, async () => {
+		const project = await getProject(projectId)
+		if (!project) throw new Error('Project not found')
+
+		const current_data = { ...(project.data || {}) }
+
+		if (current_data[collection.filename]) {
+			return { success: false, message: `Collection "${collection.filename}" already exists` }
+		}
+
+		// Ensure id column exists at the beginning
+		let schema = [...collection.schema]
+		const has_id = schema.some(col => col.name === 'id')
+		if (!has_id) {
+			schema.unshift({ name: 'id', type: 'id' })
+		} else {
+			schema = schema.filter(col => col.name !== 'id')
+			schema.unshift({ name: 'id', type: 'id' })
+		}
+
+		// Add IDs to records if not provided
+		const now = new Date().toISOString()
+		const records_with_ids = collection.records.map(r => ({
+			id: r.id || crypto.randomUUID().slice(0, 5),
+			...r,
+			created: r.created || now,
+			updated: r.updated || now
+		}))
+
+		current_data[collection.filename] = {
+			schema,
+			records: records_with_ids,
+			icon: collection.icon
+		}
+
+		await updateProject(projectId, { data: current_data })
+		return {
+			success: true,
+			message: `Created collection "${collection.filename}" with ${collection.records.length} records`,
+			records_count: collection.records.length
+		}
+	})
+}
+
+/**
+ * Atomically insert records into an existing collection.
+ */
+export async function insertDataRecords(
+	projectId: string,
+	collectionName: string,
+	records: any[]
+): Promise<{ success: boolean; message: string }> {
+	return withProjectLock(projectId, async () => {
+		const project = await getProject(projectId)
+		if (!project) throw new Error('Project not found')
+
+		const current_data = { ...(project.data || {}) }
+
+		if (!current_data[collectionName]) {
+			return { success: false, message: `Collection "${collectionName}" does not exist` }
+		}
+
+		const now = new Date().toISOString()
+		const new_records_with_ids = records.map(r => ({
+			id: r.id || crypto.randomUUID().slice(0, 5),
+			...r,
+			created: r.created || now,
+			updated: r.updated || now
+		}))
+
+		const collection_data = current_data[collectionName]
+		const existing = Array.isArray(collection_data) ? collection_data : (collection_data.records || [])
+		const all_records = [...existing, ...new_records_with_ids]
+
+		current_data[collectionName] = {
+			schema: collection_data.schema || [],
+			records: all_records,
+			icon: collection_data.icon
+		}
+
+		await updateProject(projectId, { data: current_data })
+		return { success: true, message: `Inserted ${records.length} records into "${collectionName}"` }
+	})
 }
