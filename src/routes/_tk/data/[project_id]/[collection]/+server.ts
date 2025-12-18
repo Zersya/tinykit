@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getProject, pb } from '$lib/server/pb'
 import { check_rate_limit, check_origin, get_client_ip } from '$lib/server/data-security'
+import { validate_schema, generate_id } from '$lib/server/data-utils'
 
 /**
  * Data Proxy API - List and Create records
@@ -146,12 +147,13 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			collection_data.records = []
 		}
 
+		// Validate fields against schema
+		const { warnings } = validate_schema(collection_data, body)
+
 		// Generate ID if not provided
 		const record = {
 			id: body.id || generate_id(),
-			...body,
-			created: new Date().toISOString(),
-			updated: new Date().toISOString()
+			...body
 		}
 
 		// Add record
@@ -160,7 +162,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		// Save back to project
 		await pb.collection('_tk_projects').update(project_id, { data })
 
-		return json(record, { status: 201 })
+		// Include warnings in response if any
+		const response_body = warnings.length > 0
+			? { ...record, _warnings: warnings }
+			: record
+
+		return json(response_body, { status: 201 })
 	} catch (err: any) {
 		if (err.status === 404) {
 			throw error(404, 'Project not found')
@@ -269,15 +276,6 @@ async function upload_files_to_assets(
 	return result
 }
 
-// Helper: Generate a short random ID (5 chars, alphanumeric)
-function generate_id(): string {
-	const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-	let id = ''
-	for (let i = 0; i < 5; i++) {
-		id += chars[Math.floor(Math.random() * chars.length)]
-	}
-	return id
-}
 
 // Helper: Apply simple filter (supports field=value and field!=value)
 function apply_filter(records: any[], filter: string): any[] {

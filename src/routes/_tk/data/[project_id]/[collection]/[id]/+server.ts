@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getProject, pb } from '$lib/server/pb'
 import { check_rate_limit, check_origin, get_client_ip } from '$lib/server/data-security'
+import { validate_schema } from '$lib/server/data-utils'
 
 /**
  * Data Proxy API - Single record operations
@@ -113,30 +114,37 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 			throw error(404, 'Collection not found')
 		}
 
-		const records = get_records(data[collection])
+		const collection_data = data[collection]
+		const records = get_records(collection_data)
 		// Use loose comparison to handle numeric IDs from legacy data
 		const index = records.findIndex((r: any) => String(r.id) === String(id))
 		if (index === -1) {
 			throw error(404, 'Record not found')
 		}
 
-		// Update record, preserving id and created timestamp
+		// Validate fields against schema
+		const { warnings } = validate_schema(collection_data, updates)
+
+		// Update record, preserving id
 		const existing = records[index]
 		const updated = {
 			...existing,
 			...updates,
-			id: existing.id,
-			created: existing.created,
-			updated: new Date().toISOString()
+			id: existing.id
 		}
 
 		records[index] = updated
-		data[collection] = set_records(data[collection], records)
+		data[collection] = set_records(collection_data, records)
 
 		// Save back to project
 		await pb.collection('_tk_projects').update(project_id, { data })
 
-		return json(updated)
+		// Include warnings in response if any
+		const response_body = warnings.length > 0
+			? { ...updated, _warnings: warnings }
+			: updated
+
+		return json(response_body)
 	} catch (err: any) {
 		if (err.status) throw err
 		console.error('[Data API] Update error:', err)

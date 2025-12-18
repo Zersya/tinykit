@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import { fade } from "svelte/transition";
   import { Database, Download, Plus, Image, File, Trash2 } from "lucide-svelte";
   import { watch } from "runed";
   import { onMount } from "svelte";
@@ -18,6 +19,7 @@
   import { getProjectStore } from "../../project.svelte";
   import FileField from "../../components/FileField.svelte";
   import JsonEditor from "../../components/JsonEditor.svelte";
+  import IconPicker from "../../components/IconPicker.svelte";
 
   const { project_id } = getProjectContext();
   const store = getProjectStore();
@@ -89,6 +91,19 @@
   let data_files = $derived(store.data_files);
   let table_icons = $derived(store.table_icons);
 
+  // LocalStorage key for last opened collection (scoped by project)
+  const LAST_COLLECTION_KEY = `tinykit:last_collection:${project_id}`;
+
+  function get_last_opened_collection(): string | null {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(LAST_COLLECTION_KEY);
+  }
+
+  function save_last_opened_collection(name: string) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(LAST_COLLECTION_KEY, name);
+  }
+
   // Watch for target_field changes to auto-select collection
   watch(
     () => [target_field, data_files.length] as const,
@@ -104,11 +119,20 @@
           on_target_consumed?.();
         }
       } else if (!selected_file && files_count > 0) {
-        // Auto-select first collection if none selected
-        select_file(data_files[0]);
+        // Try to restore last opened collection, fall back to first
+        const saved = get_last_opened_collection();
+        const to_select = saved && data_files.includes(saved) ? saved : data_files[0];
+        select_file(to_select);
       }
     },
   );
+
+  // Save selected collection to localStorage when it changes
+  $effect(() => {
+    if (selected_file) {
+      save_last_opened_collection(selected_file);
+    }
+  });
 
   let selected_file = $state<string | null>(null);
   let file_content = $state<CollectionData | null>(null);
@@ -121,12 +145,14 @@
   let show_edit_collection = $state(false);
   let new_collection_name = $state("");
   let new_collection_icon = $state("");
-  let new_columns = $state<ColumnSchema[]>([{ name: "id", type: "text" }]);
+  let new_columns = $state<ColumnSchema[]>([{ name: "id", type: "id" }]);
 
   // Sanitize collection name as user types
   function handle_collection_name_input(e: Event) {
     const input = e.target as HTMLInputElement;
-    const sanitized = input.value.toLowerCase().replace(/\s+/g, "_");
+    const raw = input.value;
+    const sanitized = raw.toLowerCase().replace(/\s+/g, "_");
+    input.value = sanitized;
     new_collection_name = sanitized;
   }
 
@@ -172,9 +198,9 @@
     return ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif"].includes(ext);
   }
 
-  // Get asset URL
+  // Get asset URL (use centralized helper)
   function get_asset_url(filename: string, thumb?: string): string {
-    return `/_tk/assets/${filename}?project_id=${project_id}${thumb ? `&thumb=${thumb}` : ""}`;
+    return api.asset_url(project_id, filename, thumb);
   }
 
   // Get display name from Pocketbase filename
@@ -331,7 +357,6 @@
       await api.write_data_file(project_id, selected_file, data);
       file_content = data;
       on_refresh_preview();
-      window.dispatchEvent(new CustomEvent("tinykit:config-updated"));
     } catch (error) {
       console.error("Failed to save collection:", error);
     }
@@ -429,13 +454,10 @@
       show_create_collection = false;
       new_collection_name = "";
       new_collection_icon = "";
-      new_columns = [{ name: "id", type: "text" }];
+      new_columns = [{ name: "id", type: "id" }];
 
       // Auto-select the new collection
       await select_file(collection_id);
-
-      // Notify Preview to update its data collections for import map
-      window.dispatchEvent(new CustomEvent("tinykit:config-updated"));
     } catch (error) {
       console.error("Failed to create collection:", error);
     }
@@ -671,6 +693,7 @@
               <tbody class="divide-y divide-[var(--builder-border)]">
                 {#each records as record, i (i)}
                   <tr
+                    transition:fade
                     onclick={() => start_edit_record(i)}
                     class="hover:bg-[var(--builder-bg-secondary)] group transition-colors cursor-pointer active:bg-[var(--builder-bg-tertiary)]"
                   >
@@ -793,6 +816,28 @@
       <div class="flex-1 flex items-center justify-center p-4">
         <p class="text-[var(--builder-text-secondary)] text-sm">Loading...</p>
       </div>
+    {:else if data_files.length === 0}
+      <div class="flex-1 flex items-center justify-center p-8">
+        <div class="text-center max-w-xs">
+          <Database
+            class="w-12 h-12 mx-auto mb-4 text-[var(--builder-text-secondary)] opacity-40"
+          />
+          <h3 class="text-[var(--builder-text-primary)] font-medium mb-2">
+            No collections yet
+          </h3>
+          <p class="text-[var(--builder-text-secondary)] text-sm mb-4">
+            Collections let you store and manage structured data for your app.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onclick={() => (show_create_collection = true)}
+          >
+            <Plus class="w-4 h-4 mr-1.5" />
+            Create your first collection
+          </Button>
+        </div>
+      </div>
     {:else}
       <div class="flex-1 flex items-center justify-center p-4">
         <div class="text-center text-[var(--builder-text-secondary)]">
@@ -826,7 +871,7 @@
           <Label for="collection-name">Collection Name</Label>
           <Input
             id="collection-name"
-            bind:value={new_collection_name}
+            value={new_collection_name}
             oninput={handle_collection_name_input}
             placeholder="e.g., users, products, orders"
             class="h-10"
@@ -835,23 +880,12 @@
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <Label for="collection-icon">Icon</Label>
-          <div class="flex gap-2">
-            <div
-              class="w-10 h-10 border border-[var(--builder-border)] rounded flex items-center justify-center bg-[var(--builder-bg-primary)]"
-            >
-              <Icon
-                icon={new_collection_icon || "mdi:database"}
-                class="w-5 h-5 text-[var(--builder-text-primary)]"
-              />
-            </div>
-            <Input
-              id="collection-icon"
-              bind:value={new_collection_icon}
-              placeholder="e.g., mdi:users (optional)"
-              class="h-10 flex-1"
-            />
-          </div>
+          <Label>Icon</Label>
+          <IconPicker
+            value={new_collection_icon}
+            onchange={(icon) => (new_collection_icon = icon)}
+            initial_search={new_collection_name}
+          />
         </div>
 
         <div class="flex flex-col gap-2">
@@ -871,38 +905,52 @@
 
           <div class="flex flex-col gap-2">
             {#each new_columns as column, i (i)}
-              <div class="flex gap-2 items-center">
-                <Input
-                  bind:value={column.name}
-                  placeholder="Column name"
-                  class="flex-1 min-w-0"
-                />
-                <Select.Root
-                  type="single"
-                  value={column.type}
-                  onValueChange={(v) => {
-                    if (v) column.type = v;
-                  }}
-                >
-                  <Select.Trigger class="w-24 md:w-28 flex-shrink-0">
+              {#if column.type === "id"}
+                <!-- ID column is locked -->
+                <div class="flex gap-2 items-center opacity-60">
+                  <Input value={column.name} class="flex-1 min-w-0" disabled />
+                  <div
+                    class="w-24 md:w-28 px-3 py-2 text-sm border border-[var(--builder-border)] rounded-md bg-[var(--builder-bg-secondary)] flex-shrink-0"
+                  >
                     {get_type_label(column.type)}
-                  </Select.Trigger>
-                  <Select.Content>
-                    {#each COLUMN_TYPES as type_option (type_option.value)}
-                      <Select.Item
-                        value={type_option.value}
-                        label={type_option.label}
-                      >
-                        {type_option.label}
-                      </Select.Item>
-                    {/each}
-                  </Select.Content>
-                </Select.Root>
-                <DeleteButton
-                  onclick={() => remove_column(i)}
-                  disabled={new_columns.length === 1}
-                />
-              </div>
+                  </div>
+                  <div class="w-8"></div>
+                </div>
+              {:else}
+                <div class="flex gap-2 items-center">
+                  <Input
+                    bind:value={column.name}
+                    placeholder="Column name"
+                    class="flex-1 min-w-0"
+                  />
+                  <Select.Root
+                    type="single"
+                    value={column.type}
+                    onValueChange={(v) => {
+                      if (v) column.type = v;
+                    }}
+                  >
+                    <Select.Trigger class="w-24 md:w-28 flex-shrink-0">
+                      {get_type_label(column.type)}
+                    </Select.Trigger>
+                    <Select.Content>
+                      {#each COLUMN_TYPES.filter((t) => t.value !== "id") as type_option (type_option.value)}
+                        <Select.Item
+                          value={type_option.value}
+                          label={type_option.label}
+                        >
+                          {type_option.label}
+                        </Select.Item>
+                      {/each}
+                    </Select.Content>
+                  </Select.Root>
+                  <DeleteButton
+                    onclick={() => {
+                      new_columns = new_columns.filter((_, idx) => idx !== i);
+                    }}
+                  />
+                </div>
+              {/if}
             {/each}
           </div>
         </div>
@@ -947,23 +995,12 @@
         class="flex flex-col gap-4 py-4"
       >
         <div class="flex flex-col gap-1.5 mb-2">
-          <Label for="edit-collection-icon">Icon</Label>
-          <div class="flex gap-2">
-            <div
-              class="w-10 h-10 border border-[var(--builder-border)] rounded flex items-center justify-center bg-[var(--builder-bg-primary)]"
-            >
-              <Icon
-                icon={new_collection_icon || "mdi:database"}
-                class="w-5 h-5 text-[var(--builder-text-primary)]"
-              />
-            </div>
-            <Input
-              id="edit-collection-icon"
-              bind:value={new_collection_icon}
-              placeholder="e.g., mdi:users (optional)"
-              class="flex-1 h-10"
-            />
-          </div>
+          <Label>Icon</Label>
+          <IconPicker
+            value={new_collection_icon}
+            onchange={(icon) => (new_collection_icon = icon)}
+            initial_search={selected_file || ""}
+          />
         </div>
 
         <div class="flex flex-col gap-2">
