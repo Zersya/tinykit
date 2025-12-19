@@ -6,7 +6,7 @@ Build at `/tinykit`, deploy to `/`
 
 ![Screenshot](./screenshot.png)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/tinykit)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/YzaerV?referralCode=RCPU7k&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ---
 
@@ -50,7 +50,7 @@ Build at `/tinykit`, deploy to `/`
 
 ### Railway (Easiest)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/tinykit)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/YzaerV?referralCode=RCPU7k&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 One-click deploy. Configure your LLM from the app (optionally, add key as ENV var).
 
