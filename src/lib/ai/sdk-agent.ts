@@ -286,6 +286,12 @@ function create_tools(project_id: string, project_name: string) {
 					.replace(/\{\/\#key\}/g, '{/key}')
 					// Strip :root blocks - design system injects CSS vars at runtime
 					.replace(/:root\s*\{[^}]*\}/g, '')
+					// Make all styles global (single-file apps don't benefit from scoping)
+					.replace(/<style\s*>/gi, '<style global>')
+					.replace(/<style\s+(?!global)([\s\S]*?)>/gi, (match, attrs) => {
+						if (attrs.includes('global')) return match
+						return `<style global ${attrs.trim()}>`
+					})
 
 				// Note: onToolCall is triggered by stream events, not here (avoids duplicates)
 				await updateProject(project_id, { frontend_code: cleaned_code })
