@@ -324,6 +324,19 @@ export default db
 							}
 							if (id === 'virtual:$tinykit') {
 								return `
+export function asset(filename, options) {
+	if (!filename) return '';
+	if (filename.startsWith('http://') || filename.startsWith('https://')) {
+		return filename;
+	}
+	let url = '/_tk/assets/' + filename;
+	const params = [];
+	if (options?.thumb) params.push('thumb=' + options.thumb);
+	if (options?.download) params.push('download=1');
+	if (params.length) url += '?' + params.join('&');
+	return url;
+}
+
 export async function proxy(url, options = {}) {
 	const proxy_url = '/api/proxy?url=' + encodeURIComponent(url);
 	return fetch(proxy_url, options);
