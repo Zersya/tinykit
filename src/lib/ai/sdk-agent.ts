@@ -189,6 +189,32 @@ const rss = await proxy.text('https://hnrss.org/frontpage')
 - Use relative units (%, rem, fr) not fixed px widths
 - Touch-friendly: buttons/links min 44px tap target
 
+## Routing
+For multi-page apps, use path-based routing:
+\`\`\`svelte
+<script>
+  let path = $state(location.pathname)
+  $effect(() => {
+    const onNav = (e) => path = e.state?.path ?? location.pathname
+    addEventListener('popstate', onNav)
+    return () => removeEventListener('popstate', onNav)
+  })
+</script>
+
+{#if path === '/'}
+  <h1>Home</h1>
+{:else if path === '/about'}
+  <h1>About</h1>
+{:else if path.startsWith('/post/')}
+  <article>Post: {path.slice(6)}</article>
+{:else}
+  <h1>404</h1>
+{/if}
+\`\`\`
+- Links like <a href="/about"> are auto-intercepted
+- Use history.pushState({}, '', '/path') for programmatic navigation
+- Query params: new URLSearchParams(location.search).get('q')
+
 ## Workflow
 1. Start with numbered plan (3-5 items as shown above)
 2. Call write_code tool to save Svelte code

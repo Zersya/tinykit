@@ -33,6 +33,9 @@ export function build_thumbnail_srcdoc(js_code, design_css) {
 </head>
 <body>
 <script type="module">
+// Virtual location so routing renders home page
+window.__tk_location = { pathname: '/', search: '', hash: '', href: '/' };
+
 const code = ${escaped_code};
 const blob = new Blob([code], { type: 'text/javascript' });
 const url = URL.createObjectURL(blob);

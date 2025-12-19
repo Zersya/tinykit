@@ -632,42 +632,77 @@ export default window.__tk_content;
           }
         }
 
-        // Patch History API for srcdoc iframes (pushState/replaceState throw in srcdoc)
-        // Hash-based URLs work via location.hash, path-based URLs are silently ignored
-        history.pushState = (state, title, url) => {
-          try {
-            if (url && typeof url === 'string') {
-              const hashIndex = url.indexOf('#');
-              if (hashIndex !== -1) {
-                location.hash = url.slice(hashIndex);
-              }
-              // Path-only URLs silently ignored (can't navigate in srcdoc)
-            }
-          } catch (e) {
-            // Silently ignore any errors
+        // Virtual location for srcdoc iframes
+        // Tracks pathname/search/hash so routing libraries work correctly
+        const virtualLocation = {
+          pathname: '/',
+          search: '',
+          hash: location.hash || '',
+          get href() {
+            return this.pathname + this.search + this.hash;
           }
+        };
+
+        // Parse URL into virtual location parts
+        function parseUrl(url) {
+          if (!url || typeof url !== 'string') return;
+          const hashIdx = url.indexOf('#');
+          const searchIdx = url.indexOf('?');
+
+          let pathname = url;
+          let search = '';
+          let hash = '';
+
+          if (hashIdx !== -1) {
+            hash = url.slice(hashIdx);
+            pathname = url.slice(0, hashIdx);
+          }
+          if (searchIdx !== -1 && (hashIdx === -1 || searchIdx < hashIdx)) {
+            search = hashIdx !== -1 ? url.slice(searchIdx, hashIdx) : url.slice(searchIdx);
+            pathname = url.slice(0, searchIdx);
+          }
+
+          return { pathname: pathname || '/', search, hash };
+        }
+
+        // Patch History API to update virtual location and dispatch popstate with path in state
+        history.pushState = (state, title, url) => {
+          const parsed = parseUrl(url);
+          if (parsed) {
+            Object.assign(virtualLocation, parsed);
+            if (parsed.hash) {
+              try { location.hash = parsed.hash; } catch(e) {}
+            }
+          }
+          window.dispatchEvent(new PopStateEvent('popstate', {
+            state: { ...state, path: parsed?.pathname || '/' }
+          }));
         };
 
         history.replaceState = (state, title, url) => {
-          try {
-            if (url && typeof url === 'string') {
-              const hashIndex = url.indexOf('#');
-              if (hashIndex !== -1) {
-                location.hash = url.slice(hashIndex);
-              }
+          const parsed = parseUrl(url);
+          if (parsed) {
+            Object.assign(virtualLocation, parsed);
+            if (parsed.hash) {
+              try { location.hash = parsed.hash; } catch(e) {}
             }
-          } catch (e) {
-            // Silently ignore any errors
           }
         };
 
-        // Intercept hash link clicks to keep navigation within iframe
+        // Intercept internal link clicks for SPA navigation
         document.addEventListener('click', (e) => {
-          const link = e.target.closest('a[href^="#"]');
-          if (link) {
-            e.preventDefault();
-            location.hash = link.getAttribute('href');
-          }
+          const a = e.target.closest('a');
+          if (!a) return;
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          if (a.target === '_blank' || a.hasAttribute('download')) return;
+
+          const href = a.getAttribute('href');
+          if (!href) return;
+          if (href.startsWith('http://') || href.startsWith('https://')) return;
+          if (href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+          e.preventDefault();
+          history.pushState({}, '', href);
         });
 
         // Install a safe console proxy that forwards logs to the parent
