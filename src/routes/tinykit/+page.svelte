@@ -47,7 +47,7 @@
 
   // Derived state
   let selected_kit = $derived(kits.find((k) => k.id === selected_kit_id));
-  let uncategorized_projects = $derived(projects.filter((p) => !p.kit));
+  let uncategorized_projects = $derived(projects.filter((p) => !p.kit || p.kit === "custom"));
   let has_uncategorized = $derived(uncategorized_projects.length > 0);
   let filtered_projects = $derived(
     selected_kit_id === "_uncategorized"
