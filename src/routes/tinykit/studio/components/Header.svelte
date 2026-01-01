@@ -227,7 +227,7 @@
     class="h-14 border-t border-[var(--builder-border)] bg-[var(--builder-bg-primary)] flex items-center justify-between px-4 flex-shrink-0 relative z-30"
   >
     <!-- Left: Logo -->
-    <a href="/tinykit/dashboard" class="logo">
+    <a href="/tinykit" class="logo">
       <Logo />
     </a>
 
@@ -323,7 +323,7 @@
   >
     <!-- Left: Logo -->
     <div class="flex items-center space-x-3 flex-shrink-0">
-      <a href="/tinykit/dashboard" class="logo">
+      <a href="/tinykit" class="logo">
         <Logo />
       </a>
       <!-- Project name and save status -->
