@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import { ArrowLeft, Sparkles, Loader2, Upload, X, ChevronLeft, ChevronRight, GalleryHorizontal, Settings } from "lucide-svelte";
+  import { ArrowLeft, Sparkles, Loader2, Upload, Settings } from "lucide-svelte";
   import Icon from "@iconify/svelte";
   import { get_saved_theme, apply_builder_theme } from "$lib/builder_themes";
   import { onMount } from "svelte";
@@ -17,7 +17,6 @@
 
   type TemplateArchetype = 'app' | 'form' | 'dashboard' | 'site';
   import type { Kit } from "../types";
-  import TemplatePreview from "./TemplatePreview.svelte";
 
   let prompt = $state("");
   let is_creating = $state(false);
@@ -77,48 +76,6 @@
     { id: "dashboard", label: "Dashboards" },
     { id: "site", label: "Sites" },
   ];
-
-  // Preview carousel state
-  let preview_index = $state(-1);
-  let show_preview = $state(false);
-
-  let preview_template = $derived(
-    preview_index >= 0 && preview_index < kit_templates.length
-      ? kit_templates[preview_index]
-      : null
-  );
-
-  function open_preview(template: Template) {
-    const idx = kit_templates.findIndex(t => t.id === template.id);
-    if (idx !== -1) {
-      preview_index = idx;
-      show_preview = true;
-    }
-  }
-
-  function close_preview() {
-    show_preview = false;
-    preview_index = -1;
-  }
-
-  function next_template() {
-    if (kit_templates.length > 1) {
-      preview_index = (preview_index + 1) % kit_templates.length;
-    }
-  }
-
-  function prev_template() {
-    if (kit_templates.length > 1) {
-      preview_index = (preview_index - 1 + kit_templates.length) % kit_templates.length;
-    }
-  }
-
-  function handle_preview_keydown(e: KeyboardEvent) {
-    if (!show_preview) return;
-    if (e.key === "ArrowRight") next_template();
-    if (e.key === "ArrowLeft") prev_template();
-    if (e.key === "Escape") close_preview();
-  }
 
   onMount(async () => {
     const theme = get_saved_theme();
@@ -338,8 +295,6 @@
   }
 </script>
 
-<svelte:window onkeydown={handle_preview_keydown} />
-
 <svelte:head>
   <title>New App - tinykit</title>
 </svelte:head>
@@ -407,7 +362,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {#each kit_templates as template (template.id)}
               <button
-                onclick={() => open_preview(template)}
+                onclick={() => create_from_template(template.id)}
                 disabled={is_creating}
                 class="group relative flex flex-col items-start gap-1.5 p-2.5 bg-[var(--builder-bg-secondary)] border border-[var(--builder-border)] rounded-lg hover:border-[var(--builder-accent)] hover:bg-[var(--builder-bg-tertiary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left h-[72px]"
               >
@@ -423,10 +378,6 @@
                 <p class="text-[10px] text-[var(--builder-text-muted)] line-clamp-2 leading-tight">
                   {template.description}
                 </p>
-                <!-- Carousel icon on hover -->
-                <div class="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <GalleryHorizontal class="w-3.5 h-3.5 text-[var(--builder-text-muted)]" />
-                </div>
               </button>
             {/each}
         </div>
@@ -541,97 +492,3 @@
     {/if}
   </main>
 </div>
-
-<!-- Template Preview Carousel -->
-{#if show_preview && preview_template}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-    role="dialog"
-    aria-modal="true"
-  >
-    <!-- Close button -->
-    <button
-      onclick={close_preview}
-      class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
-      aria-label="Close preview"
-    >
-      <X class="w-6 h-6" />
-    </button>
-
-    <!-- Template name and counter -->
-    <div class="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/50 px-4 py-2 rounded-full">
-      <Icon icon={preview_template.preview} class="w-5 h-5 text-white" />
-      <span class="text-white text-sm font-medium">{preview_template.name}</span>
-      <span class="text-white/60 text-sm">{preview_index + 1} / {kit_templates.length}</span>
-    </div>
-
-    <!-- Navigation: Previous -->
-    {#if kit_templates.length > 1}
-      <button
-        onclick={prev_template}
-        class="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
-        aria-label="Previous template"
-      >
-        <ChevronLeft class="w-8 h-8" />
-      </button>
-    {/if}
-
-    <!-- Preview container -->
-    <div class="w-[90vw] h-[80vh] max-w-5xl flex flex-col bg-[var(--builder-bg-primary)] rounded-lg overflow-hidden shadow-2xl">
-      {#key preview_template.id}
-        <div class="flex-1 overflow-hidden bg-white">
-          <TemplatePreview template={preview_template} />
-        </div>
-      {/key}
-
-      <!-- Footer with description and action -->
-      <div class="flex items-center justify-between px-6 py-4 border-t border-[var(--builder-border)] bg-[var(--builder-bg-primary)]">
-        <p class="text-sm text-[var(--builder-text-muted)] max-w-md line-clamp-2">
-          {preview_template.description}
-        </p>
-        <button
-          onclick={() => {
-            const template_id = preview_template!.id;
-            close_preview();
-            create_from_template(template_id);
-          }}
-          disabled={is_creating}
-          class="px-4 py-2 rounded-lg bg-[var(--builder-accent)] text-[var(--builder-accent-text)] hover:bg-[var(--builder-accent-hover)] disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2 flex-shrink-0"
-        >
-          {#if is_creating}
-            <Loader2 class="w-4 h-4 animate-spin" />
-            Creating...
-          {:else}
-            Use Template
-          {/if}
-        </button>
-      </div>
-    </div>
-
-    <!-- Navigation: Next -->
-    {#if kit_templates.length > 1}
-      <button
-        onclick={next_template}
-        class="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
-        aria-label="Next template"
-      >
-        <ChevronRight class="w-8 h-8" />
-      </button>
-    {/if}
-
-    <!-- Dot indicators -->
-    {#if kit_templates.length > 1 && kit_templates.length <= 12}
-      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-        {#each kit_templates as _, i}
-          <button
-            onclick={() => (preview_index = i)}
-            class="w-2 h-2 rounded-full transition-all {i === preview_index
-              ? 'bg-white scale-125'
-              : 'bg-white/40 hover:bg-white/70'}"
-            aria-label="Go to template {i + 1}"
-          ></button>
-        {/each}
-      </div>
-    {/if}
-  </div>
-{/if}
