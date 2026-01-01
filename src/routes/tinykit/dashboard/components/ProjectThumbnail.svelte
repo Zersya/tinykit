@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte"
+	import Icon from "@iconify/svelte"
 	import { processCode, dynamic_iframe_srcdoc } from "$lib/compiler/init"
 	import { pb } from "$lib/pocketbase.svelte"
 	import type { DesignField, ContentField } from "../../types"
@@ -11,7 +12,8 @@
 		data = {},
 		compiled_html = "",
 		project_id = "",
-		collection_id = "_tk_projects"
+		collection_id = "_tk_projects",
+		fallback_icon = ""
 	}: {
 		code: string
 		design: DesignField[]
@@ -20,6 +22,7 @@
 		compiled_html?: string
 		project_id?: string
 		collection_id?: string
+		fallback_icon?: string
 	} = $props()
 
 	let srcdoc = $state("")
@@ -116,7 +119,11 @@
 		</div>
 	{:else if has_error || !srcdoc}
 		<div class="placeholder ghost">
-			<div class="ghost-box"></div>
+			{#if fallback_icon}
+				<Icon icon={fallback_icon} class="fallback-icon" />
+			{:else}
+				<div class="ghost-box"></div>
+			{/if}
 		</div>
 	{:else}
 		<iframe
@@ -159,6 +166,13 @@
 		border: 2px dashed var(--builder-border, #333);
 		border-radius: 8px;
 		opacity: 0.4;
+	}
+
+	:global(.fallback-icon) {
+		width: 48px;
+		height: 48px;
+		color: var(--builder-text-muted, #666);
+		opacity: 0.6;
 	}
 
 	.spinner {

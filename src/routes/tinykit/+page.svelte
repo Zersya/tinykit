@@ -176,6 +176,11 @@
       ? `/tinykit/new?kit=${selected_kit_id}`
       : "/tinykit/new";
   }
+
+  function get_kit_icon(project: Project): string {
+    const kit = kits.find((k) => k.id === project.kit);
+    return kit?.icon || "lucide:file";
+  }
 </script>
 
 <svelte:head>
@@ -347,6 +352,7 @@
                   data={project.data || {}}
                   compiled_html={project.published_html}
                   project_id={project.id}
+                  fallback_icon={get_kit_icon(project)}
                 />
               </a>
 
