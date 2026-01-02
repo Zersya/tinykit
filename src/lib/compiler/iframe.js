@@ -393,10 +393,17 @@ proxy.url = function(url) {
 
 /**
  * @param {string} head
- * @param {string} broadcast_id
+ * @param {string | object} broadcast_id_or_options - broadcast_id string or options object
  * @param {{content?: any[], design?: any[], project_id?: string, data_collections?: string[]}} [options]
  */
-export const dynamic_iframe_srcdoc = (head, broadcast_id, options = {}) => {
+export const dynamic_iframe_srcdoc = (head, broadcast_id_or_options, options = {}) => {
+  // Support both calling conventions: (head, options) and (head, broadcast_id, options)
+  let broadcast_id = '';
+  if (typeof broadcast_id_or_options === 'object') {
+    options = broadcast_id_or_options;
+  } else {
+    broadcast_id = broadcast_id_or_options || '';
+  }
   const { content = [], design = [], project_id = '', data_collections = [] } = options;
 
   // Generate Bunny Fonts CDN links for any web fonts in design fields
