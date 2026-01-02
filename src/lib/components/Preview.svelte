@@ -182,6 +182,9 @@
   function check_for_freeze() {
     if (!iframe_loaded) return;
 
+    // Skip freeze detection when tab is hidden - browsers throttle background tabs
+    if (document.visibilityState === "hidden") return;
+
     // Skip freeze detection during grace period after code change (e.g., snapshot restore)
     if (last_code_change_at > 0) {
       const grace_elapsed = Date.now() - last_code_change_at;
@@ -228,11 +231,26 @@
     }, 50);
   }
 
+  // Handle tab visibility changes - reset heartbeat when tab becomes visible
+  // This prevents false "infinite loop" detection after tab was in background
+  function handle_visibility_change() {
+    if (document.visibilityState === "visible") {
+      // Reset heartbeat timestamp when tab becomes visible
+      // Browser throttles setInterval in background tabs, so heartbeat may be stale
+      last_heartbeat = Date.now();
+      mounting_in_progress = false;
+      mount_started_at = 0;
+    }
+  }
+
   onMount(() => {
     is_mounted = true;
 
     // Listen for messages from iframe via postMessage
     window.addEventListener("message", handle_iframe_message);
+
+    // Listen for tab visibility changes to prevent false freeze detection
+    document.addEventListener("visibilitychange", handle_visibility_change);
 
     // Start heartbeat monitoring for infinite loop detection (check every 400ms for faster response)
     heartbeat_check_interval = setInterval(check_for_freeze, 400);
@@ -240,6 +258,7 @@
     return () => {
       is_mounted = false;
       window.removeEventListener("message", handle_iframe_message);
+      document.removeEventListener("visibilitychange", handle_visibility_change);
       send_data_update.cancel();
       debounced_compile.cancel();
       if (heartbeat_check_interval) {
