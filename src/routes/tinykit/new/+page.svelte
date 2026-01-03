@@ -69,13 +69,20 @@
       : kit_templates_all.filter((t) => t.archetype === selected_archetype)
   );
 
-  const archetypes: { id: TemplateArchetype | "all"; label: string }[] = [
+  const all_archetypes: { id: TemplateArchetype | "all"; label: string }[] = [
     { id: "all", label: "All" },
     { id: "app", label: "Apps" },
     { id: "form", label: "Forms" },
     { id: "dashboard", label: "Dashboards" },
     { id: "site", label: "Sites" },
   ];
+
+  // Only show archetype tabs that have templates in this kit
+  let archetypes = $derived(
+    all_archetypes.filter(a =>
+      a.id === "all" || kit_templates_all.some(t => t.archetype === a.id)
+    )
+  );
 
   onMount(async () => {
     const theme = get_saved_theme();
