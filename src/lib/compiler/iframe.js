@@ -393,10 +393,17 @@ proxy.url = function(url) {
 
 /**
  * @param {string} head
- * @param {string} broadcast_id
+ * @param {string | object} broadcast_id_or_options - broadcast_id string or options object
  * @param {{content?: any[], design?: any[], project_id?: string, data_collections?: string[]}} [options]
  */
-export const dynamic_iframe_srcdoc = (head, broadcast_id, options = {}) => {
+export const dynamic_iframe_srcdoc = (head, broadcast_id_or_options, options = {}) => {
+  // Support both calling conventions: (head, options) and (head, broadcast_id, options)
+  let broadcast_id = '';
+  if (typeof broadcast_id_or_options === 'object') {
+    options = broadcast_id_or_options;
+  } else {
+    broadcast_id = broadcast_id_or_options || '';
+  }
   const { content = [], design = [], project_id = '', data_collections = [] } = options;
 
   // Generate Bunny Fonts CDN links for any web fonts in design fields
@@ -456,9 +463,10 @@ export default window.__tk_content;
         let reset;
         let last_rendered_html = '';
 
-        const channel = new BroadcastChannel('${broadcast_id}');
-        channel.onmessage = async ({data}) => {
-          const { event, payload = {} } = data
+        // Listen for messages from parent via postMessage
+        window.addEventListener('message', async (e) => {
+          const { event, payload = {} } = e.data || {}
+          if (!event) return
 
           // Handle CSS variable injection (no reload needed)
           if (event === 'UPDATE_CSS_VARS') {
@@ -547,17 +555,22 @@ export default window.__tk_content;
             // Update existing component
             update(payload.data)
           }
-        }
-        channel.postMessage({ event: 'INITIALIZED' });
+        })
+        window.parent.postMessage({ event: 'INITIALIZED' }, '*');
+
+        // Send periodic heartbeat to parent so it knows we're not frozen
+        setInterval(() => {
+          try { window.parent.postMessage({ event: 'HEARTBEAT' }, '*'); } catch (_) {}
+        }, 500);
 
         // Capture runtime errors (not just mount errors)
         window.addEventListener('error', (e) => {
           const error_message = e.error ? e.error.toString() : e.message || 'Unknown runtime error'
           try {
-            channel.postMessage({
+            window.parent.postMessage({
               event: 'SET_ERROR',
               payload: { error: error_message }
-            })
+            }, '*')
           } catch (_) {}
           e.preventDefault() // Prevent default browser error display
         })
@@ -566,10 +579,10 @@ export default window.__tk_content;
         window.addEventListener('unhandledrejection', (e) => {
           const error_message = e.reason ? e.reason.toString() : 'Unhandled promise rejection'
           try {
-            channel.postMessage({
+            window.parent.postMessage({
               event: 'SET_ERROR',
               payload: { error: error_message }
-            })
+            }, '*')
           } catch (_) {}
           e.preventDefault()
         })
@@ -588,7 +601,7 @@ export default window.__tk_content;
 
         function update(props) {
           // Reset runtime error display in parent
-          try { channel.postMessage({ event: 'BEGIN' }); } catch (_) {}
+          try { window.parent.postMessage({ event: 'BEGIN' }, '*'); } catch (_) {}
 
           // Reset log tracking for this render
           logsThisRender = false;
@@ -608,12 +621,12 @@ export default window.__tk_content;
             const { unmount } = mod
             reset = () => unmount(component)
             last_rendered_html = document.body.innerHTML;
-            channel.postMessage({ event: 'MOUNTED' })
+            window.parent.postMessage({ event: 'MOUNTED' }, '*')
             // After enough time for console logs to be called and sent, check if any were produced
             // Wait longer than the throttle delay (120ms) to ensure any mount-time logs are sent first
             setTimeout(() => {
               if (!logsThisRender) {
-                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: null } }); } catch (_) {}
+                try { window.parent.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: null } }, '*'); } catch (_) {}
               }
             }, 300)
           } catch(e) {
@@ -623,12 +636,12 @@ export default window.__tk_content;
             } else {
               document.body.innerHTML = previous_html;
             }
-            channel.postMessage({
+            window.parent.postMessage({
               event: 'SET_ERROR',
               payload: {
                 error: e.toString()
               }
-            });
+            }, '*');
           }
         }
 
@@ -732,7 +745,7 @@ export default window.__tk_content;
                 const payload = lastQueued;
                 const key = (()=>{ try { return JSON.stringify(payload);} catch(_) { return String(payload);} })();
                 if (key !== lastSent) {
-                  try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: payload } }); } catch(_) {}
+                  try { window.parent.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: payload } }, '*'); } catch(_) {}
                   lastSent = key;
                 }
               }, 120);
