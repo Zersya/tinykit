@@ -120,7 +120,8 @@ One-line summary:`
 			// If using custom base URL, use the configured model (might be the only one available)
 			// Otherwise use gpt-4o-mini for OpenAI
 			const cheapModel = llmConfig.baseUrl ? llmConfig.model : 'gpt-4o-mini'
-			model = openai(cheapModel)
+			// Use Chat Completions API for OpenAI-compatible providers (custom baseUrl)
+			model = llmConfig.baseUrl ? openai.chat(cheapModel) : openai(cheapModel)
 		}
 
 		const result = await generateText({

@@ -275,8 +275,14 @@ function get_model(config: AgentConfig) {
 	switch (config.provider) {
 		case 'openai': {
 			const openai = createOpenAI({
-				apiKey: config.apiKey
+				apiKey: config.apiKey,
+				baseURL: config.baseUrl
 			})
+			// Use Chat Completions API for OpenAI-compatible providers (custom baseUrl)
+			// Native OpenAI uses Responses API by default in AI SDK 5
+			if (config.baseUrl) {
+				return openai.chat(config.model)
+			}
 			return openai(config.model)
 		}
 		case 'anthropic': {
