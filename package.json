@@ -4,6 +4,9 @@
   "description": "Open-source AI development platform - build production apps in an afternoon",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "concurrently --kill-others \"npm run pocketbase:serve\" \"vite dev\"",
     "dev:vite": "vite dev",
