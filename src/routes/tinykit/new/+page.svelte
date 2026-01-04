@@ -84,7 +84,7 @@
     // Check LLM configuration status
     try {
       const res = await fetch("/api/settings/llm-status", {
-        credentials: "include"
+        headers: { Authorization: `Bearer ${pb.authStore.token}` }
       });
       if (res.ok) {
         const data = await res.json();
@@ -312,18 +312,85 @@
         Add to {kit_name}
       </h1>
     </div>
-    <p class="text-[var(--builder-text-muted)] mb-12 text-center">
-      Pick a template or describe your app
+    <p class="text-[var(--builder-text-muted)] mb-8 text-center">
+      Describe your app or pick a template
     </p>
 
     <!-- Error message -->
     {#if error_message}
       <div
-        class="w-full mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm"
+        class="w-full mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm"
       >
         {error_message}
       </div>
     {/if}
+
+    <!-- AI Generation section -->
+    {#if llm_configured === false}
+      <!-- LLM not configured - show settings prompt -->
+      <div
+        class="w-full bg-[var(--builder-bg-secondary)] border border-[var(--builder-border)] rounded-lg p-6 mb-8"
+      >
+        <div class="flex flex-col items-center gap-3 text-center">
+          <div class="p-3 rounded-full bg-[var(--builder-bg-tertiary)]">
+            <Sparkles class="w-6 h-6 text-[var(--builder-text-muted)]" />
+          </div>
+          <p class="text-[var(--builder-text-secondary)] text-sm">
+            AI generation requires an LLM API key
+          </p>
+          <a
+            href="/tinykit/settings"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[var(--builder-accent)] text-[var(--builder-accent-text)] hover:bg-[var(--builder-accent-hover)] transition-colors text-sm font-medium"
+          >
+            <Settings class="w-4 h-4" />
+            Configure LLM
+          </a>
+        </div>
+      </div>
+    {:else}
+      <!-- LLM configured or loading - show prompt input -->
+      <div
+        class="w-full bg-[var(--builder-bg-secondary)] border border-[var(--builder-border)] rounded-lg focus-within:ring-2 focus-within:ring-[var(--builder-accent)] focus-within:border-transparent mb-8"
+        class:opacity-50={llm_configured === null}
+      >
+        <div class="relative">
+          <textarea
+            bind:this={textarea_el}
+            bind:value={prompt}
+            onkeydown={handle_keydown}
+            disabled={is_creating || llm_configured === null}
+            placeholder="Describe your app..."
+            rows="3"
+            class="w-full px-4 pt-4 pb-2 bg-transparent text-[var(--builder-text-primary)] placeholder:text-[var(--builder-text-muted)] resize-none focus:outline-none disabled:opacity-50 max-h-48 overflow-y-auto"
+          ></textarea>
+          <div
+            class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[var(--builder-bg-secondary)] to-transparent pointer-events-none"
+          ></div>
+        </div>
+        <div class="flex justify-end px-3 pb-3">
+          <button
+            onclick={create_from_prompt}
+            disabled={!prompt.trim() || is_creating || llm_configured === null}
+            class="px-3 py-2 rounded-md bg-[var(--builder-accent)] text-[var(--builder-accent-text)] hover:bg-[var(--builder-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
+          >
+            {#if is_creating}
+              <Loader2 class="w-4 h-4 animate-spin" />
+              Creating...
+            {:else}
+              <Sparkles class="w-4 h-4" />
+              Create
+            {/if}
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Templates divider -->
+    <div class="w-full flex items-center gap-4 mb-6">
+      <div class="flex-1 h-px bg-[var(--builder-border)]"></div>
+      <span class="text-sm text-[var(--builder-text-muted)]">Or pick a template</span>
+      <div class="flex-1 h-px bg-[var(--builder-border)]"></div>
+    </div>
 
     <!-- Filter Bar -->
     <div
@@ -409,72 +476,5 @@
       </div>
     </button>
 
-    <!-- AI Generation section -->
-    <div class="w-full flex items-center gap-4 mt-8 mb-6">
-      <div class="flex-1 h-px bg-[var(--builder-border)]"></div>
-      <span class="text-sm text-[var(--builder-text-muted)]"
-        >Or describe your app</span
-      >
-      <div class="flex-1 h-px bg-[var(--builder-border)]"></div>
-    </div>
-
-    {#if llm_configured === false}
-      <!-- LLM not configured - show settings prompt -->
-      <div
-        class="w-full bg-[var(--builder-bg-secondary)] border border-[var(--builder-border)] rounded-lg p-6"
-      >
-        <div class="flex flex-col items-center gap-3 text-center">
-          <div class="p-3 rounded-full bg-[var(--builder-bg-tertiary)]">
-            <Sparkles class="w-6 h-6 text-[var(--builder-text-muted)]" />
-          </div>
-          <p class="text-[var(--builder-text-secondary)] text-sm">
-            AI generation requires an LLM API key
-          </p>
-          <a
-            href="/tinykit/settings"
-            class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[var(--builder-accent)] text-[var(--builder-accent-text)] hover:bg-[var(--builder-accent-hover)] transition-colors text-sm font-medium"
-          >
-            <Settings class="w-4 h-4" />
-            Configure LLM
-          </a>
-        </div>
-      </div>
-    {:else}
-      <!-- LLM configured or loading - show prompt input -->
-      <div
-        class="w-full bg-[var(--builder-bg-secondary)] border border-[var(--builder-border)] rounded-lg focus-within:ring-2 focus-within:ring-[var(--builder-accent)] focus-within:border-transparent"
-        class:opacity-50={llm_configured === null}
-      >
-        <div class="relative">
-          <textarea
-            bind:this={textarea_el}
-            bind:value={prompt}
-            onkeydown={handle_keydown}
-            disabled={is_creating || llm_configured === null}
-            placeholder="Describe your app..."
-            rows="3"
-            class="w-full px-4 pt-4 pb-2 bg-transparent text-[var(--builder-text-primary)] placeholder:text-[var(--builder-text-muted)] resize-none focus:outline-none disabled:opacity-50 max-h-48 overflow-y-auto"
-          ></textarea>
-          <div
-            class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[var(--builder-bg-secondary)] to-transparent pointer-events-none"
-          ></div>
-        </div>
-        <div class="flex justify-end px-3 pb-3">
-          <button
-            onclick={create_from_prompt}
-            disabled={!prompt.trim() || is_creating || llm_configured === null}
-            class="px-3 py-2 rounded-md bg-[var(--builder-accent)] text-[var(--builder-accent-text)] hover:bg-[var(--builder-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
-          >
-            {#if is_creating}
-              <Loader2 class="w-4 h-4 animate-spin" />
-              Creating...
-            {:else}
-              <Sparkles class="w-4 h-4" />
-              Create
-            {/if}
-          </button>
-        </div>
-      </div>
-    {/if}
   </main>
 </div>

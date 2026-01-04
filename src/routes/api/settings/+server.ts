@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
-import { pb } from '$lib/server/pb'
+import { pb, ensureAuth } from '$lib/server/pb'
 import PocketBase from 'pocketbase'
 
 const PB_URL = 'http://127.0.0.1:8091'
@@ -57,6 +57,11 @@ export const GET: RequestHandler = async ({ url, request }) => {
 		return json({ error: 'Missing key parameter' }, { status: 400 })
 	}
 
+	// Ensure server pb client is authenticated
+	if (!await ensureAuth()) {
+		return json({ error: 'Server not configured' }, { status: 500 })
+	}
+
 	try {
 		const record = await pb.collection('_tk_settings').getOne(key)
 		let value = record.value
@@ -85,6 +90,11 @@ export const GET: RequestHandler = async ({ url, request }) => {
 export const POST: RequestHandler = async ({ request }) => {
 	if (!await isAuthenticated(request)) {
 		return json({ error: 'Unauthorized' }, { status: 401 })
+	}
+
+	// Ensure server pb client is authenticated
+	if (!await ensureAuth()) {
+		return json({ error: 'Server not configured' }, { status: 500 })
 	}
 
 	try {

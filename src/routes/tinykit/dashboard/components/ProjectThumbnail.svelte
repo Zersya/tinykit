@@ -33,11 +33,13 @@
 
 	function handle_message(e: MessageEvent) {
 		if (e.source !== iframe_el?.contentWindow) return
-		const { event } = e.data || {}
-		if (event === "INITIALIZED" && pending_code) {
+		const { event: msg_event } = e.data || {}
+		if (msg_event === "INITIALIZED" && pending_code) {
+			// Clone data to avoid DataCloneError from Svelte 5 reactive proxies
+			const cloned_data = JSON.parse(JSON.stringify(data || {}))
 			iframe_el?.contentWindow?.postMessage({
 				event: "SET_APP",
-				payload: { componentApp: pending_code, data: {} }
+				payload: { componentApp: pending_code, data: cloned_data }
 			}, "*")
 			pending_code = null
 		}
@@ -130,7 +132,7 @@
 			bind:this={iframe_el}
 			title="Project preview"
 			{srcdoc}
-			sandbox="allow-scripts"
+			sandbox="allow-scripts allow-same-origin"
 			class="thumbnail-iframe"
 		></iframe>
 	{/if}

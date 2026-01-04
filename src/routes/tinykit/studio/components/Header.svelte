@@ -46,11 +46,12 @@
     on_download_project: () => void;
     on_reset_project: () => void;
     on_toggle_vibe_zone?: () => void;
+    on_title_change?: (title: string) => void;
     is_mobile?: boolean;
   };
 
   let {
-    project_title = $bindable(),
+    project_title = "",
     project_domain = "",
     is_deploying,
     vibe_zone_enabled,
@@ -65,6 +66,7 @@
     on_download_project,
     on_reset_project,
     on_toggle_vibe_zone,
+    on_title_change,
     is_mobile = false,
   }: HeaderProps = $props();
 
@@ -202,7 +204,9 @@
 
   function finish_editing_title() {
     is_editing_title = false;
-    project_title = title_input_value;
+    if (title_input_value !== project_title && on_title_change) {
+      on_title_change(title_input_value);
+    }
   }
 
   function handle_title_keydown(e: KeyboardEvent) {

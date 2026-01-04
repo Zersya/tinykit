@@ -320,6 +320,18 @@ export class ProjectStore {
         apply_builder_theme(theme_id);
         await this.update_settings({ builder_theme_id: theme_id });
     }
+
+    /**
+     * Generic update for project fields (name, domain, etc.)
+     * Updates local state immediately and persists to server.
+     */
+    async update(data: Partial<Project>) {
+        if (!this.project) return;
+        // Update local state immediately
+        this.project = { ...this.project, ...data };
+        // Persist to server
+        await pb.collection('_tk_projects').update(this.project_id, data);
+    }
 }
 
 export function setProjectStore(store: ProjectStore) {

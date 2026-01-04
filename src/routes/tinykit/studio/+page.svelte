@@ -553,6 +553,15 @@
     }
   }
 
+  async function handle_title_change(title: string) {
+    if (!store) return
+    try {
+      await store.update({ name: title })
+    } catch (err) {
+      console.error("Failed to update project name:", err)
+    }
+  }
+
   function handle_load_templates() {
     show_template_picker = true;
   }
@@ -670,6 +679,7 @@
           on_download_project={handle_download_project}
           on_reset_project={handle_reset_project}
           on_toggle_vibe_zone={toggle_vibe_lounge}
+          on_title_change={handle_title_change}
         />
       </div>
 

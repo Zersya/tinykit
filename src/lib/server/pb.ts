@@ -53,7 +53,7 @@ function getAuthConfig(): { token: string } | { email: string; password: string 
 	return null
 }
 
-async function ensureAuth(): Promise<boolean> {
+export async function ensureAuth(): Promise<boolean> {
 	// If already authenticated with valid token, return true
 	if (isAuthenticated && pb.authStore.isValid) {
 		return true

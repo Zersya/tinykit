@@ -150,13 +150,17 @@
     deleting_kit = null;
   }
 
-  async function handle_save_kit(id: string, name: string, icon: string) {
+  async function handle_save_kit(id: string, name: string, icon: string, builder_theme_id?: string) {
     try {
-      const updated = await kit_service.update(id, { name, icon });
-      kits = kits.map((k) => (k.id === id ? updated : k));
+      const data: { name: string; icon: string; builder_theme_id?: string } = { name, icon }
+      if (builder_theme_id) {
+        data.builder_theme_id = builder_theme_id
+      }
+      const updated = await kit_service.update(id, data)
+      kits = kits.map((k) => (k.id === id ? updated : k))
     } catch (err) {
-      console.error("Failed to update kit:", err);
-      alert("Failed to update kit");
+      console.error("Failed to update kit:", err)
+      alert("Failed to update kit")
     }
   }
 

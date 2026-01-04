@@ -65,7 +65,13 @@ export const kit_service = {
 	 * Update a kit
 	 */
 	async update(id: string, data: Partial<Pick<Kit, 'name' | 'icon' | 'builder_theme_id'>>): Promise<Kit> {
-		return await pb.collection(COLLECTION).update<Kit>(id, data)
+		try {
+			return await pb.collection(COLLECTION).update<Kit>(id, data)
+		} catch (e: any) {
+			const msg = e?.response?.message || e?.message || 'Unknown error'
+			console.error('Kit update error:', e?.response || e)
+			throw new Error(`Failed to update kit: ${msg}`)
+		}
 	},
 
 	/**
